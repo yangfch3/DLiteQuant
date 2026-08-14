@@ -9,8 +9,6 @@ name: daily-data-site
 on:
   schedule:
     - cron: '35 11 * * 1-5' # 每天 19:35 北京时间（交易日）
-  push:
-    branches: [main] # 推送 main 时自动重建部署
   workflow_dispatch: {}
 
 permissions:

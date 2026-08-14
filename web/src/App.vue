@@ -7,7 +7,7 @@ import MetricCard from './components/MetricCard.vue'
 
 const data = reactive<Record<string, Point[]>>({})
 const metaList = ref<MetricMeta[]>([])
-const range = ref<RangeKey>('1y')
+const range = ref<RangeKey>('3y')
 const loading = ref(true)
 
 const metaMap = computed(() => new Map(metaList.value.map((m) => [m.metric, m])))

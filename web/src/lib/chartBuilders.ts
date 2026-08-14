@@ -236,12 +236,9 @@ function marginOption(chart: ChartConfig, data: Record<string, Point[]>, range: 
     animation: false,
     tooltip: TOOLTIP,
     legend: { ...LEGEND, data: ['两融余额', '融资余额', '融券余额'] },
-    grid: { left: 56, right: 64, top: 32, bottom: 56 },
+    grid: { left: 56, right: 24, top: 32, bottom: 56 },
     xAxis: { type: 'category', data: dates, axisLabel: AXIS_LABEL, axisLine: { lineStyle: { color: '#2b3340' } } },
-    yAxis: [
-      { type: 'value', scale: true, splitLine: SPLIT, axisLabel: AXIS_LABEL },
-      { type: 'value', scale: true, splitLine: { show: false }, axisLabel: AXIS_LABEL },
-    ],
+    yAxis: { type: 'value', scale: true, splitLine: SPLIT, axisLabel: AXIS_LABEL },
     dataZoom: [ZOOM_INSIDE, ZOOM_SLIDER],
     series: [
       {
@@ -266,7 +263,7 @@ function marginOption(chart: ChartConfig, data: Record<string, Point[]>, range: 
         name: '融券余额',
         type: 'line',
         data: rq,
-        yAxisIndex: 1,
+        yAxisIndex: 0,
         ...LINE_SMALL,
         lineStyle: { ...LINE_SMALL.lineStyle, color: '#bc8cff' },
         itemStyle: { color: '#bc8cff' },
