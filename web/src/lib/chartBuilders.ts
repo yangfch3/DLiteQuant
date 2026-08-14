@@ -201,10 +201,11 @@ function indexOption(chart: ChartConfig, data: Record<string, Point[]>, range: R
   const dates = pts.map((p) => p.date)
   const vals = pts.map((p) => p.value)
   const ma20 = ma(vals, 20)
-  // ETF 净值量级（如 1.365），保留 3 位小数
+  // ETF 净值量级（如 1.365）保留 3 位；点位量级（>=100）取整
+  const fmtIndex = (v: number) => (Math.abs(v) >= 100 ? String(Math.round(v)) : v.toFixed(3))
   const indexTooltip = {
     ...TOOLTIP,
-    valueFormatter: (v: unknown) => (v == null ? '-' : Number(v).toFixed(3)),
+    valueFormatter: (v: unknown) => (v == null ? '-' : fmtIndex(Number(v))),
   }
   return {
     animation: false,
@@ -212,7 +213,7 @@ function indexOption(chart: ChartConfig, data: Record<string, Point[]>, range: R
     legend: { ...LEGEND, data: ['收盘', 'MA20'] },
     grid: { left: 56, right: 24, top: 32, bottom: 56 },
     xAxis: { type: 'category', data: dates, axisLabel: AXIS_LABEL, axisLine: { lineStyle: { color: '#2b3340' } } },
-    yAxis: { type: 'value', scale: true, splitLine: SPLIT, axisLabel: { ...AXIS_LABEL, formatter: (v: number) => v.toFixed(3) } },
+    yAxis: { type: 'value', scale: true, splitLine: SPLIT, axisLabel: { ...AXIS_LABEL, formatter: (v: number) => fmtIndex(v) } },
     dataZoom: [ZOOM_INSIDE, ZOOM_SLIDER],
     series: [
       {
@@ -327,9 +328,11 @@ function multiLineOption(
   opts: { yMin?: number; yMax?: number; zeroLine?: boolean },
 ): EChartsOption {
   const { dates, cols } = align(lines.map((l) => filterPoints(data[l.metric] ?? [], range)))
+  // 智能去尾：整数不显示小数（50 → 50%），非整数保留 2 位（68.76 → 68.76%）
+  const fmtPct = (v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(2))
   const tooltip = {
     ...TOOLTIP,
-    valueFormatter: (v: unknown) => (v == null ? '-' : `${Number(v).toFixed(2)}%`),
+    valueFormatter: (v: unknown) => (v == null ? '-' : `${fmtPct(Number(v))}%`),
   }
   const series = lines.map((l, i) => {
     const s: Record<string, unknown> = {
@@ -363,7 +366,7 @@ function multiLineOption(
       min: opts.yMin,
       max: opts.yMax,
       splitLine: SPLIT,
-      axisLabel: { ...AXIS_LABEL, formatter: (v: number) => `${v.toFixed(2)}%` },
+      axisLabel: { ...AXIS_LABEL, formatter: (v: number) => `${fmtPct(v)}%` },
     },
     dataZoom: [ZOOM_INSIDE, ZOOM_SLIDER],
     series,

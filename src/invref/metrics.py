@@ -77,7 +77,7 @@ METRIC_META: dict[str, dict] = {
     },
     "erp:csi800": {
         "title": "股债性价比 ERP",
-        "unit": "个百分点",
+        "unit": "%",
         "decimals": 2,
         "description": "中证800(000906)加权EP(100/PE) − 10Y国债；meta 含 ep/y10 分量",
     },

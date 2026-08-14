@@ -21,7 +21,7 @@ export const METRIC_META: Record<string, MetricInfo> = {
   'valuation:all_a:pb': { title: '全A等权PB', unit: '倍', description: '全A等权市净率（乐咕乐股）', decimals: 2 },
   'valuation:all_a:pe_pct': { title: '全A PE 分位', unit: '%', description: '全A等权PE 全历史滚动分位（0-100）', decimals: 1 },
   'valuation:all_a:pb_pct': { title: '全A PB 分位', unit: '%', description: '全A等权PB 全历史滚动分位（0-100）', decimals: 1 },
-  'erp:csi800': { title: '股债性价比 ERP', unit: '个百分点', description: '中证800(000906)加权EP(100/PE) − 10Y国债', decimals: 2 },
+  'erp:csi800': { title: '股债性价比 ERP', unit: '%', description: '中证800(000906)加权EP(100/PE) − 10Y国债', decimals: 2 },
 }
 
 export type ChartKind = 'market' | 'median' | 'index' | 'margin' | 'yield' | 'erp' | 'valuation'

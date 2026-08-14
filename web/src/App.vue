@@ -54,6 +54,8 @@ const pills = computed(() =>
       label: info.title,
       unit: info.unit,
       decimals: info.decimals ?? 2,
+      // % 量纲的比率型指标（中位数/收益率/分位/ERP）只显示差值，不显示相对变化率
+      deltaMode: info.unit === '%' ? 'point' : 'pct',
       value: last?.value ?? null,
       prev: prev?.value ?? null,
     }
@@ -105,6 +107,7 @@ const updatedAt = computed(() => {
         :label="p.label"
         :unit="p.unit"
         :decimals="p.decimals"
+        :delta-mode="p.deltaMode"
         :value="p.value"
         :prev="p.prev"
       />
