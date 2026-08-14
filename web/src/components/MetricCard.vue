@@ -24,7 +24,7 @@ withDefaults(
       class="delta"
       :class="value - prev > 0 ? 'up' : value - prev < 0 ? 'down' : 'flat-c'"
     >
-      {{ value - prev > 0 ? '+' : '' }}{{ (value - prev).toFixed(decimals) }}
+      {{ value - prev > 0 ? '+' : '' }}{{ (value - prev).toFixed(decimals) }}<template v-if="deltaMode === 'point'">{{ unit }}</template>
       <template v-if="deltaMode === 'pct'">
         ({{ prev !== 0 ? (((value - prev) / Math.abs(prev)) * 100).toFixed(2) : '--' }}%)
       </template>
