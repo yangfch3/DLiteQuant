@@ -50,6 +50,36 @@ METRIC_META: dict[str, dict] = {
         "decimals": 4,
         "description": "中债国债到期收益率（30年）",
     },
+    "valuation:all_a:pe": {
+        "title": "全A等权PE",
+        "unit": "倍",
+        "decimals": 2,
+        "description": "全A等权滚动市盈率（乐咕乐股，TTM）",
+    },
+    "valuation:all_a:pb": {
+        "title": "全A等权PB",
+        "unit": "倍",
+        "decimals": 2,
+        "description": "全A等权市净率（乐咕乐股）",
+    },
+    "valuation:all_a:pe_pct": {
+        "title": "全A PE 分位",
+        "unit": "%",
+        "decimals": 1,
+        "description": "全A等权PE 全历史滚动分位（0-100，截至当日含当日）",
+    },
+    "valuation:all_a:pb_pct": {
+        "title": "全A PB 分位",
+        "unit": "%",
+        "decimals": 1,
+        "description": "全A等权PB 全历史滚动分位（0-100，截至当日含当日）",
+    },
+    "erp:csi800": {
+        "title": "股债性价比 ERP",
+        "unit": "个百分点",
+        "decimals": 2,
+        "description": "中证800加权EP(100/PE) − 10Y国债；meta 含 ep/y10 分量",
+    },
 }
 
 # 前端图表布局（方案 B 静态模式也依赖此顺序）
@@ -60,4 +90,6 @@ CHART_LAYOUT: list[dict] = [
     {"id": "index_h30269", "title": "红利低波指数", "kind": "index", "metrics": ["index:H30269:close"]},
     {"id": "margin", "title": "两融数据", "kind": "margin", "metrics": ["margin:balance"]},
     {"id": "yield", "title": "国债收益率", "kind": "yield", "metrics": ["bond:cn:10y", "bond:cn:1y", "bond:cn:30y"]},
+    {"id": "erp", "title": "股债性价比", "kind": "erp", "metrics": ["erp:csi800"]},
+    {"id": "valuation", "title": "全A估值分位", "kind": "valuation", "metrics": ["valuation:all_a:pe_pct", "valuation:all_a:pb_pct"]},
 ]

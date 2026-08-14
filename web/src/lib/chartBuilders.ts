@@ -41,8 +41,8 @@ const TOOLTIP = {
 const ZOOM_INSIDE = { type: 'inside', start: 0, end: 100 } as const
 const ZOOM_SLIDER = {
   type: 'slider',
-  bottom: 0,
-  height: 16,
+  bottom: 12,
+  height: 24,
   borderColor: '#2b3340',
   backgroundColor: '#161b22',
   fillerColor: 'rgba(88,166,255,0.15)',
@@ -87,6 +87,10 @@ export function buildOption(
       return marginOption(chart, data, range)
     case 'yield':
       return yieldOption(chart, data, range)
+    case 'erp':
+      return erpOption(chart, data, range)
+    case 'valuation':
+      return valuationOption(chart, data, range)
   }
 }
 
@@ -105,7 +109,7 @@ function marketOption(chart: ChartConfig, data: Record<string, Point[]>, range: 
     axisPointer: { link: [{ xAxisIndex: 'all' }] },
     grid: [
       { left: 64, right: 64, top: 32, height: '52%' },
-      { left: 64, right: 64, top: '70%', height: '22%' },
+      { left: 64, right: 64, top: '68%', height: '18%' },
     ],
     xAxis: [
       { type: 'category', data: dates, gridIndex: 0, axisLabel: { show: false }, axisLine: { lineStyle: { color: '#2b3340' } } },
@@ -308,4 +312,66 @@ function yieldOption(chart: ChartConfig, data: Record<string, Point[]>, range: R
       { name: '10Y-1Y利差', type: 'line', data: spread, ...LINE_SMALL, lineStyle: { ...LINE_SMALL.lineStyle, color: '#3fb950', type: 'dashed' }, itemStyle: { color: '#3fb950' } },
     ],
   }
+}
+
+// 通用百分比多线图（ERP / 估值分位 共用）
+function multiLineOption(
+  data: Record<string, Point[]>,
+  range: RangeKey,
+  lines: { name: string; metric: string; color: string; dashed?: boolean }[],
+  opts: { yMin?: number; yMax?: number; zeroLine?: boolean },
+): EChartsOption {
+  const { dates, cols } = align(lines.map((l) => filterPoints(data[l.metric] ?? [], range)))
+  const tooltip = {
+    ...TOOLTIP,
+    valueFormatter: (v: unknown) => (v == null ? '-' : `${Number(v).toFixed(2)}%`),
+  }
+  const series = lines.map((l, i) => {
+    const s: Record<string, unknown> = {
+      name: l.name,
+      type: 'line',
+      data: cols[i],
+      ...LINE_SMALL,
+      lineStyle: { ...LINE_SMALL.lineStyle, color: l.color, ...(l.dashed ? { type: 'dashed' } : {}) },
+      itemStyle: { color: l.color },
+    }
+    if (opts.zeroLine && i === 0) {
+      s.markLine = {
+        symbol: 'none',
+        silent: true,
+        label: { show: false },
+        lineStyle: { color: '#2b3340' },
+        data: [{ yAxis: 0 }],
+      }
+    }
+    return s
+  })
+  return {
+    animation: false,
+    tooltip,
+    legend: { ...LEGEND, data: lines.map((l) => l.name) },
+    grid: { left: 56, right: 24, top: 32, bottom: 56 },
+    xAxis: { type: 'category', data: dates, axisLabel: AXIS_LABEL, axisLine: { lineStyle: { color: '#2b3340' } } },
+    yAxis: {
+      type: 'value',
+      scale: true,
+      min: opts.yMin,
+      max: opts.yMax,
+      splitLine: SPLIT,
+      axisLabel: { ...AXIS_LABEL, formatter: (v: number) => `${v.toFixed(2)}%` },
+    },
+    dataZoom: [ZOOM_INSIDE, ZOOM_SLIDER],
+    series,
+  }
+}
+
+function erpOption(chart: ChartConfig, data: Record<string, Point[]>, range: RangeKey): EChartsOption {
+  return multiLineOption(data, range, [{ name: 'ERP', metric: 'erp:csi800', color: '#58a6ff' }], { zeroLine: true })
+}
+
+function valuationOption(chart: ChartConfig, data: Record<string, Point[]>, range: RangeKey): EChartsOption {
+  return multiLineOption(data, range, [
+    { name: 'PE 分位', metric: 'valuation:all_a:pe_pct', color: '#58a6ff' },
+    { name: 'PB 分位', metric: 'valuation:all_a:pb_pct', color: '#d29922' },
+  ], { yMin: 0, yMax: 100 })
 }
