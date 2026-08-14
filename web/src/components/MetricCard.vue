@@ -7,6 +7,7 @@ withDefaults(
     prev?: number | null
     decimals?: number
     deltaMode?: 'pct' | 'point'
+    sub?: { label: string; value: number | null; decimals?: number; unit?: string }
   }>(),
   { decimals: 2, deltaMode: 'pct' },
 )
@@ -30,5 +31,6 @@ withDefaults(
       </template>
     </span>
     <span v-else class="delta flat-c">暂无对比</span>
+    <span v-if="sub" class="sub">{{ sub.label }} {{ sub.value != null ? sub.value.toFixed(sub.decimals ?? 2) : '--' }}{{ sub.unit ? ' ' + sub.unit : '' }}</span>
   </div>
 </template>

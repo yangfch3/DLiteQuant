@@ -87,18 +87,26 @@ def em_money_supply() -> list[dict]:
     返回原始行：REPORT_DATE/TIME/BASIC_CURRENCY(M2)/CURRENCY(M1)/FREE_CASH(M0) 及 *_SAME/*_SEQUENTIAL。
     历史 2008-01 至今（该表不提供更早数据）。
     """
+    return em_dc(
+        "RPT_ECONOMY_CURRENCY_SUPPLY",
+        "REPORT_DATE,TIME,BASIC_CURRENCY,BASIC_CURRENCY_SAME,BASIC_CURRENCY_SEQUENTIAL,"
+        "CURRENCY,CURRENCY_SAME,CURRENCY_SEQUENTIAL",
+    )
+
+
+def em_dc(report: str, columns: str) -> list[dict]:
+    """东财数据中心通用直连。返回原始行 dict 列表（倒序，最新在前）。"""
     r = requests.get(
         EM_DC,
         params={
-            "columns": "REPORT_DATE,TIME,BASIC_CURRENCY,BASIC_CURRENCY_SAME,BASIC_CURRENCY_SEQUENTIAL,"
-            "CURRENCY,CURRENCY_SAME,CURRENCY_SEQUENTIAL",
+            "columns": columns,
             "pageNumber": "1",
             "pageSize": "2000",
             "sortColumns": "REPORT_DATE",
             "sortTypes": "-1",
             "source": "WEB",
             "client": "WEB",
-            "reportName": "RPT_ECONOMY_CURRENCY_SUPPLY",
+            "reportName": report,
         },
         headers=UA, timeout=20,
     )
@@ -106,7 +114,7 @@ def em_money_supply() -> list[dict]:
     j = r.json()
     data = (j.get("result") or {}).get("data") or []
     if not data:
-        raise RuntimeError("em money_supply: empty")
+        raise RuntimeError(f"em_dc {report}: empty")
     return data
 
 

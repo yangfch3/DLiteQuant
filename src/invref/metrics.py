@@ -43,6 +43,18 @@ METRIC_META: dict[str, dict] = {
         "unit": "亿元",
         "description": "M1 月度余额及年增率（东财数据中心）",
     },
+    "price:cn:cpi": {
+        "title": "CPI 同比",
+        "unit": "%",
+        "decimals": 1,
+        "description": "CPI/PPI 月度同比与 CPI 年度均值（东财数据中心）",
+    },
+    "price:cn:ppi": {
+        "title": "PPI 同比",
+        "unit": "%",
+        "decimals": 1,
+        "description": "PPI 月度同比（东财数据中心，2006-01 起）",
+    },
     "bond:cn:1y": {
         "title": "国债收益率 1Y",
         "unit": "%",
@@ -101,6 +113,7 @@ CHART_LAYOUT: list[dict] = [
     {"id": "index_h30269", "title": "红利低波指数", "kind": "index", "metrics": ["index:H30269:close"]},
     {"id": "margin", "title": "两融数据", "kind": "margin", "metrics": ["margin:balance"]},
     {"id": "macro", "title": "货币供应量 M1/M2", "kind": "macro", "metrics": ["macro:cn:m2", "macro:cn:m1"]},
+    {"id": "price", "title": "CPI、PPI", "kind": "price", "metrics": ["price:cn:cpi", "price:cn:ppi"]},
     {"id": "yield", "title": "国债收益率", "kind": "yield", "metrics": ["bond:cn:10y", "bond:cn:1y", "bond:cn:30y"]},
     {"id": "erp", "title": "股债性价比", "kind": "erp", "metrics": ["erp:csi800"]},
     {"id": "valuation", "title": "全A估值分位", "kind": "valuation", "metrics": ["valuation:all_a:pe_pct", "valuation:all_a:pb_pct"]},

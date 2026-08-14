@@ -87,6 +87,8 @@ export function buildOption(
       return marginOption(chart, data, range)
     case 'macro':
       return macroOption(chart, data, range)
+    case 'price':
+      return priceOption(chart, data, range)
     case 'yield':
       return yieldOption(chart, data, range)
     case 'erp':
@@ -410,14 +412,20 @@ function macroOption(chart: ChartConfig, data: Record<string, Point[]>, range: R
   }
 }
 
-// 通用百分比多线图（ERP / 估值分位 共用）
+// 通用百分比多线图（ERP / 估值分位 / CPI-PPI 共用）
+type LineDef = (
+  | { metric: string; points?: never }
+  | { metric?: never; points: Point[] }
+) & { name: string; color: string; dashed?: boolean }
+
 function multiLineOption(
   data: Record<string, Point[]>,
   range: RangeKey,
-  lines: { name: string; metric: string; color: string; dashed?: boolean }[],
+  lines: LineDef[],
   opts: { yMin?: number; yMax?: number; zeroLine?: boolean; median?: boolean },
 ): EChartsOption {
-  const { dates, cols } = align(lines.map((l) => filterPoints(data[l.metric] ?? [], range)))
+  const seriesData = lines.map((l) => filterPoints(l.points ?? data[l.metric!] ?? [], range))
+  const { dates, cols } = align(seriesData)
   // 智能去尾：整数不显示小数（50 → 50%），非整数保留 2 位（68.76 → 68.76%）
   const fmtPct = (v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(2))
   const tooltip = {
@@ -481,6 +489,26 @@ function erpOption(chart: ChartConfig, data: Record<string, Point[]>, range: Ran
     zeroLine: true,
     median: true,
   })
+}
+
+function priceOption(chart: ChartConfig, data: Record<string, Point[]>, range: RangeKey): EChartsOption {
+  // CPI 年度线：每年 12 个月同比的算术平均（= 官方年度 CPI / 累计口径）；
+  // 当年（进行中年份）为当年已发布月份的均值（= 官方累计同比）
+  const cpi = data['price:cn:cpi'] ?? []
+  const byYear = new Map<string, { sum: number; n: number }>()
+  for (const p of cpi) {
+    const y = p.date.slice(0, 4)
+    const e = byYear.get(y) ?? { sum: 0, n: 0 }
+    e.sum += p.value
+    e.n += 1
+    byYear.set(y, e)
+  }
+  const cpiYear = cpi.map((p) => ({ ...p, value: byYear.get(p.date.slice(0, 4))!.sum / byYear.get(p.date.slice(0, 4))!.n }))
+  return multiLineOption(data, range, [
+    { name: 'CPI同比', metric: 'price:cn:cpi', color: '#58a6ff' },
+    { name: 'PPI同比', metric: 'price:cn:ppi', color: '#d29922' },
+    { name: 'CPI年度', points: cpiYear, color: '#3fb950', dashed: true },
+  ], { zeroLine: true })
 }
 
 function valuationOption(chart: ChartConfig, data: Record<string, Point[]>, range: RangeKey): EChartsOption {

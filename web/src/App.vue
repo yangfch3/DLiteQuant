@@ -63,16 +63,21 @@ const pills = computed(() =>
     // M2 卡片：标题带最近月份(yymm)，数值换算为万亿、3 位小数
     const isM2 = metric === 'macro:cn:m2'
     const toW = (v: number | null | undefined) => (v == null ? null : v / 10000)
+    // CPI/PPI 卡片：一个卡片显示两值（主 CPI，sub 行 PPI）
+    const isPrice = c.id === 'price'
+    const ppiPts = data[c.metrics[1]] ?? []
+    const ppiLast = ppiPts.length ? ppiPts[ppiPts.length - 1] : null
     return {
       id: c.id,
       row: ROW2.has(c.id) ? 2 : 1,
-      label: isM2 && last ? `${info.title}（${last.date.slice(2, 7).replace('-', '')}）` : info.title,
+      label: isPrice ? 'CPI、PPI' : isM2 && last ? `${info.title}（${last.date.slice(2, 7).replace('-', '')}）` : info.title,
       unit: isM2 ? '万亿' : info.unit,
       decimals: isM2 ? 3 : (info.decimals ?? 2),
       // % 量纲的比率型指标（中位数/收益率/分位/ERP）只显示差值，不显示相对变化率
       deltaMode: info.unit === '%' ? 'point' : 'pct',
       value: isM2 ? toW(last?.value) : (last?.value ?? null),
       prev: isM2 ? toW(prev?.value) : (prev?.value ?? null),
+      sub: isPrice && ppiLast ? { label: 'PPI', value: ppiLast.value, decimals: 1, unit: '%' } : undefined,
     }
   }),
 )
@@ -84,8 +89,8 @@ const ranges: { key: RangeKey; label: string }[] = [
   { key: 'all', label: '全部' },
 ]
 
-// 卡片第二行固定为：两融 / M2 / 国债10Y / ERP
-const ROW2 = new Set(['margin', 'macro', 'yield', 'erp'])
+// 卡片第二行固定为：两融 / M2 / 国债10Y / ERP / CPI-PPI
+const ROW2 = new Set(['margin', 'macro', 'yield', 'erp', 'price'])
 
 const updatedAt = computed(() => {
   const ts = metaList.value
@@ -131,6 +136,7 @@ const updatedAt = computed(() => {
         :delta-mode="p.deltaMode"
         :value="p.value"
         :prev="p.prev"
+        :sub="p.sub"
       />
     </div>
     <div class="metric-strip row2">
@@ -143,6 +149,7 @@ const updatedAt = computed(() => {
         :delta-mode="p.deltaMode"
         :value="p.value"
         :prev="p.prev"
+        :sub="p.sub"
       />
     </div>
 
