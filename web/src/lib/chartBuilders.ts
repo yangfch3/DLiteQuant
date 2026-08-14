@@ -85,6 +85,8 @@ export function buildOption(
       return indexOption(chart, data, range)
     case 'margin':
       return marginOption(chart, data, range)
+    case 'macro':
+      return macroOption(chart, data, range)
     case 'yield':
       return yieldOption(chart, data, range)
     case 'erp':
@@ -320,12 +322,100 @@ function yieldOption(chart: ChartConfig, data: Record<string, Point[]>, range: R
   }
 }
 
+function macroOption(chart: ChartConfig, data: Record<string, Point[]>, range: RangeKey): EChartsOption {
+  const s2 = filterPoints(data['macro:cn:m2'] ?? [], range)
+  const s1 = filterPoints(data['macro:cn:m1'] ?? [], range)
+  const { dates } = align([s2, s1])
+  const maps = [s2, s1].map((s) => new Map(s.map((p) => [p.date, p])))
+  const mkData = (mp: Map<string, Point>) =>
+    dates.map((d) => (mp.has(d) ? { value: mp.get(d)!.value, meta: mp.get(d)!.meta } : null))
+  // 年增率（同比%）：取 meta.yoy，缺失填 null
+  const mkYoy = (mp: Map<string, Point>) =>
+    dates.map((d) => {
+      const yoy = mp.has(d) ? mp.get(d)!.meta?.yoy : null
+      return yoy != null ? { value: yoy, rate: true } : null
+    })
+  // 大额（亿元）→ 万亿显示；tooltip 附带同比/环比
+  const fmtW = (v: number) => (Math.abs(v) >= 1e4 ? `${(v / 1e4).toFixed(2)}万亿` : `${Math.round(v)}亿`)
+  // 轴刻度：整数（万亿，不带单位汉字）
+  const fmtAxis = (v: number) => String(Math.round(v / 1e4))
+  const tooltip = {
+    ...TOOLTIP,
+    formatter: (ps: any[]) => {
+      if (!ps.length) return ''
+      const title = `<div style="font-weight:600;margin-bottom:4px">${ps[0].axisValue}</div>`
+      const body = ps
+        .map((p: any) => {
+          if (p.seriesName.includes('年增率')) {
+            return `${p.marker}${p.seriesName}：${Number(p.value).toFixed(1)}%`
+          }
+          const meta = p.data?.meta ?? {}
+          let line = `${p.marker}${p.seriesName}：${fmtW(Number(p.value))}`
+          if (meta.yoy != null) line += `　同比${Number(meta.yoy).toFixed(1)}%`
+          if (meta.mom != null) line += `　环比${Number(meta.mom).toFixed(1)}%`
+          return line
+        })
+        .join('<br/>')
+      return title + body
+    },
+  }
+  return {
+    animation: false,
+    tooltip,
+    legend: { ...LEGEND, data: ['M2余额', 'M2年增率', 'M1年增率'] },
+    grid: { left: 56, right: 64, top: 32, bottom: 56 },
+    xAxis: { type: 'category', data: dates, axisLabel: AXIS_LABEL, axisLine: { lineStyle: { color: '#2b3340' } } },
+    yAxis: [
+      { type: 'value', scale: true, splitLine: SPLIT, axisLabel: { ...AXIS_LABEL, formatter: fmtAxis } },
+      { type: 'value', scale: true, splitLine: { show: false }, axisLabel: { ...AXIS_LABEL, formatter: (v: number) => `${v}%` } },
+    ],
+    dataZoom: [ZOOM_INSIDE, ZOOM_SLIDER],
+    series: [
+      {
+        name: 'M2余额',
+        type: 'line',
+        yAxisIndex: 0,
+        data: mkData(maps[0]),
+        ...LINE_SMALL,
+        lineStyle: { ...LINE_SMALL.lineStyle, color: '#58a6ff', width: 2 },
+        itemStyle: { color: '#58a6ff' },
+      },
+      {
+        name: 'M2年增率',
+        type: 'line',
+        yAxisIndex: 1,
+        data: mkYoy(maps[0]),
+        ...LINE_SMALL,
+        lineStyle: { ...LINE_SMALL.lineStyle, color: '#3fb950', type: 'dashed' },
+        itemStyle: { color: '#3fb950' },
+      },
+      {
+        name: 'M1年增率',
+        type: 'line',
+        yAxisIndex: 1,
+        data: mkYoy(maps[1]),
+        ...LINE_SMALL,
+        lineStyle: { ...LINE_SMALL.lineStyle, color: '#bc8cff', type: 'dashed' },
+        itemStyle: { color: '#bc8cff' },
+        // 2024-01 央行调整 M1 统计口径，yoy 序列在此有台阶（可比口径增速）
+        markLine: {
+          symbol: 'none',
+          silent: true,
+          label: { show: true, position: 'insideEndTop', color: '#8b949e', fontSize: 11, formatter: 'M1口径调整' },
+          lineStyle: { color: '#f85149', type: 'dashed' },
+          data: [{ xAxis: '2024-01-01' }],
+        },
+      },
+    ],
+  }
+}
+
 // 通用百分比多线图（ERP / 估值分位 共用）
 function multiLineOption(
   data: Record<string, Point[]>,
   range: RangeKey,
   lines: { name: string; metric: string; color: string; dashed?: boolean }[],
-  opts: { yMin?: number; yMax?: number; zeroLine?: boolean },
+  opts: { yMin?: number; yMax?: number; zeroLine?: boolean; median?: boolean },
 ): EChartsOption {
   const { dates, cols } = align(lines.map((l) => filterPoints(data[l.metric] ?? [], range)))
   // 智能去尾：整数不显示小数（50 → 50%），非整数保留 2 位（68.76 → 68.76%）
@@ -333,6 +423,16 @@ function multiLineOption(
   const tooltip = {
     ...TOOLTIP,
     valueFormatter: (v: unknown) => (v == null ? '-' : `${fmtPct(Number(v))}%`),
+  }
+  // 当前周期内第一序列非空值的中位数（稳健集中趋势，抗极值）
+  let medianVal: number | null = null
+  if (opts.median) {
+    const vals = cols[0].filter((v): v is number => v != null)
+    if (vals.length) {
+      const sorted = [...vals].sort((a, b) => a - b)
+      const n = sorted.length
+      medianVal = n % 2 ? sorted[(n - 1) / 2] : (sorted[n / 2 - 1] + sorted[n / 2]) / 2
+    }
   }
   const series = lines.map((l, i) => {
     const s: Record<string, unknown> = {
@@ -343,15 +443,18 @@ function multiLineOption(
       lineStyle: { ...LINE_SMALL.lineStyle, color: l.color, ...(l.dashed ? { type: 'dashed' } : {}) },
       itemStyle: { color: l.color },
     }
+    const ml: Record<string, unknown>[] = []
     if (opts.zeroLine && i === 0) {
-      s.markLine = {
-        symbol: 'none',
-        silent: true,
-        label: { show: false },
-        lineStyle: { color: '#2b3340' },
-        data: [{ yAxis: 0 }],
-      }
+      ml.push({ yAxis: 0, lineStyle: { color: '#2b3340' }, label: { show: false } })
     }
+    if (opts.median && i === 0 && medianVal != null) {
+      ml.push({
+        yAxis: medianVal,
+        lineStyle: { color: '#f85149', type: 'dashed' },
+        label: { show: true, position: 'insideEndTop', color: '#f85149', fontSize: 11, formatter: `中值 ${fmtPct(medianVal)}%` },
+      })
+    }
+    if (ml.length) s.markLine = { symbol: 'none', silent: true, data: ml }
     return s
   })
   return {
@@ -374,7 +477,10 @@ function multiLineOption(
 }
 
 function erpOption(chart: ChartConfig, data: Record<string, Point[]>, range: RangeKey): EChartsOption {
-  return multiLineOption(data, range, [{ name: 'ERP', metric: 'erp:csi800', color: '#58a6ff' }], { zeroLine: true })
+  return multiLineOption(data, range, [{ name: 'ERP', metric: 'erp:csi800', color: '#58a6ff' }], {
+    zeroLine: true,
+    median: true,
+  })
 }
 
 function valuationOption(chart: ChartConfig, data: Record<string, Point[]>, range: RangeKey): EChartsOption {

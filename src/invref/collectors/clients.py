@@ -21,6 +21,8 @@ EM_HOST = os.getenv("INVREF_EM_HOST", "push2delay.eastmoney.com")
 # 沪深京A股
 EM_CLIST_FS = "m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23,m:0+t:81+s:2048"
 
+EM_DC = "https://datacenter-web.eastmoney.com/api/data/v1/get"
+
 CSINDEX_PERF = "https://www.csindex.com.cn/csindex-home/perf/index-perf"
 TENCENT_KLINE = "https://web.ifzq.gtimg.cn/appstock/app/fqkline/get"
 JIN10_MARGIN = {
@@ -77,6 +79,35 @@ def csindex_perf(code: str, start: str = "19900101", end: str | None = None) -> 
     if str(j.get("code")) != "200":
         raise RuntimeError(f"csindex {code}: {j.get('msg')}")
     return j.get("data") or []
+
+
+def em_money_supply() -> list[dict]:
+    """东财数据中心-货币供应量（月度 M0/M1/M2 余额亿元 + 同比/环比）。
+
+    返回原始行：REPORT_DATE/TIME/BASIC_CURRENCY(M2)/CURRENCY(M1)/FREE_CASH(M0) 及 *_SAME/*_SEQUENTIAL。
+    历史 2008-01 至今（该表不提供更早数据）。
+    """
+    r = requests.get(
+        EM_DC,
+        params={
+            "columns": "REPORT_DATE,TIME,BASIC_CURRENCY,BASIC_CURRENCY_SAME,BASIC_CURRENCY_SEQUENTIAL,"
+            "CURRENCY,CURRENCY_SAME,CURRENCY_SEQUENTIAL",
+            "pageNumber": "1",
+            "pageSize": "2000",
+            "sortColumns": "REPORT_DATE",
+            "sortTypes": "-1",
+            "source": "WEB",
+            "client": "WEB",
+            "reportName": "RPT_ECONOMY_CURRENCY_SUPPLY",
+        },
+        headers=UA, timeout=20,
+    )
+    r.raise_for_status()
+    j = r.json()
+    data = (j.get("result") or {}).get("data") or []
+    if not data:
+        raise RuntimeError("em money_supply: empty")
+    return data
 
 
 def tencent_kline(code: str, start: str, end: str, count: int = 640) -> list[list]:

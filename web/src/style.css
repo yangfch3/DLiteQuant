@@ -91,6 +91,7 @@ header.top .sub {
 .metric-strip {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 10px;
   margin-bottom: 16px;
 }
@@ -147,4 +148,28 @@ footer {
   text-align: center;
   border-top: 1px solid var(--border);
   padding-top: 12px;
+}
+
+/* 移动端：单列布局，避免横向溢出 */
+@media (max-width: 640px) {
+  #app {
+    padding: 10px;
+  }
+
+  header.top {
+    flex-wrap: wrap;
+  }
+
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .card-head {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .chart {
+    height: 300px;
+  }
 }

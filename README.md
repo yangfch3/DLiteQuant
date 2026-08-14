@@ -12,6 +12,7 @@
 | 红利低波 | `index:H30269:close` | 中证指数官网 API ✅ | 东财 |
 | 成长100 | `index:159259:close` | 腾讯 成长ETF(159259) 前复权K线 ✅（口径即 ETF 净值，仅1年历史） | —（不再用指数直连） |
 | 两融余额 | `margin:balance` | 金十数据中心 fs_1/fs_2 ✅ | 上交所/深交所官网 |
+| 货币供应量 | `macro:cn:m1/m2`（2008-01 起；图：M2余额 + M2/M1年增率） | 东财数据中心 RPT_ECONOMY_CURRENCY_SUPPLY ✅（月度） | —（金十仅 M2 同比无绝对量） |
 | 国债 1Y | `bond:cn:1y` | ⚠️ 中债官网（当前环境不可达，本机可用） | 中债 `bond_china_yield` |
 | 国债 10Y/30Y | `bond:cn:10y/30y` | 东财数据中心 RPTA_WEB_TREASURYYIELD ✅ | 中债（同源，含全期限） |
 
@@ -79,6 +80,7 @@ src/invref/
     margin.py          # 两融余额（金十/交易所）
     bond_yield.py      # 国债 1Y/10Y/30Y（中债/东财数据中心）
     market_median.py   # 全A涨跌中位数（每日快照）
+    macro.py           # 货币供应量 M1/M2（东财数据中心）
   api/main.py          # FastAPI（含可选 APScheduler 调度）
   scripts/             # daily_update / backfill_median / export_static
 web/                   # Vue3 + Vite + ECharts

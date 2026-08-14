@@ -11,7 +11,7 @@ METRIC_META: dict[str, dict] = {
         "title": "成长100 (ETF 159259)",
         "unit": "元",
         "decimals": 3,
-        "description": "易方达成长ETF(159259) 前复权收盘价，跟踪中证成长100指数(980080)",
+        "description": "易方达成长ETF 前复权收盘价",
     },
     "index:H30269:close": {
         "title": "红利低波(H30269)",
@@ -31,7 +31,17 @@ METRIC_META: dict[str, dict] = {
     "margin:balance": {
         "title": "两融余额",
         "unit": "亿元",
-        "description": "沪深两市融资余额与融券余额合计",
+        "description": "沪深两融余额",
+    },
+    "macro:cn:m2": {
+        "title": "M2 货币供应量",
+        "unit": "亿元",
+        "description": "M2 月度余额及 M1/M2 年增率（东财数据中心）",
+    },
+    "macro:cn:m1": {
+        "title": "M1 货币供应量",
+        "unit": "亿元",
+        "description": "M1 月度余额及年增率（东财数据中心）",
     },
     "bond:cn:1y": {
         "title": "国债收益率 1Y",
@@ -90,6 +100,7 @@ CHART_LAYOUT: list[dict] = [
     {"id": "index_159259", "title": "成长100 ETF", "kind": "index", "metrics": ["index:159259:close"]},
     {"id": "index_h30269", "title": "红利低波指数", "kind": "index", "metrics": ["index:H30269:close"]},
     {"id": "margin", "title": "两融数据", "kind": "margin", "metrics": ["margin:balance"]},
+    {"id": "macro", "title": "货币供应量 M1/M2", "kind": "macro", "metrics": ["macro:cn:m2", "macro:cn:m1"]},
     {"id": "yield", "title": "国债收益率", "kind": "yield", "metrics": ["bond:cn:10y", "bond:cn:1y", "bond:cn:30y"]},
     {"id": "erp", "title": "股债性价比", "kind": "erp", "metrics": ["erp:csi800"]},
     {"id": "valuation", "title": "全A估值分位", "kind": "valuation", "metrics": ["valuation:all_a:pe_pct", "valuation:all_a:pb_pct"]},

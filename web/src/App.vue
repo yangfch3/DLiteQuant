@@ -9,6 +9,13 @@ const data = reactive<Record<string, Point[]>>({})
 const metaList = ref<MetricMeta[]>([])
 const range = ref<RangeKey>('3y')
 const loading = ref(true)
+// 图表布局：false=网格(两列) true=单行(全宽)；移动端隐藏切换入口
+const single = ref(localStorage.getItem('invref_view') === 'single')
+
+function toggleView() {
+  single.value = !single.value
+  localStorage.setItem('invref_view', single.value ? 'single' : 'grid')
+}
 
 const metaMap = computed(() => new Map(metaList.value.map((m) => [m.metric, m])))
 
@@ -19,6 +26,10 @@ function onKeydown(e: KeyboardEvent) {
   if (e.ctrlKey || e.metaKey || e.altKey) return
   const tag = (e.target as HTMLElement | null)?.tagName
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+  if (e.key.toLowerCase() === 'g') {
+    toggleView()
+    return
+  }
   const key = RANGE_KEYS[e.key]
   if (key) range.value = key
 }
@@ -49,15 +60,19 @@ const pills = computed(() =>
     const last = pts.length ? pts[pts.length - 1] : null
     const prev = pts.length > 1 ? pts[pts.length - 2] : null
     const info = METRIC_META[metric] ?? { title: metric, unit: '' }
+    // M2 卡片：标题带最近月份(yymm)，数值换算为万亿、3 位小数
+    const isM2 = metric === 'macro:cn:m2'
+    const toW = (v: number | null | undefined) => (v == null ? null : v / 10000)
     return {
       id: c.id,
-      label: info.title,
-      unit: info.unit,
-      decimals: info.decimals ?? 2,
+      row: ROW2.has(c.id) ? 2 : 1,
+      label: isM2 && last ? `${info.title}（${last.date.slice(2, 7).replace('-', '')}）` : info.title,
+      unit: isM2 ? '万亿' : info.unit,
+      decimals: isM2 ? 3 : (info.decimals ?? 2),
       // % 量纲的比率型指标（中位数/收益率/分位/ERP）只显示差值，不显示相对变化率
       deltaMode: info.unit === '%' ? 'point' : 'pct',
-      value: last?.value ?? null,
-      prev: prev?.value ?? null,
+      value: isM2 ? toW(last?.value) : (last?.value ?? null),
+      prev: isM2 ? toW(prev?.value) : (prev?.value ?? null),
     }
   }),
 )
@@ -68,6 +83,9 @@ const ranges: { key: RangeKey; label: string }[] = [
   { key: '5y', label: '5年' },
   { key: 'all', label: '全部' },
 ]
+
+// 卡片第二行固定为：两融 / M2 / 国债10Y / ERP
+const ROW2 = new Set(['margin', 'macro', 'yield', 'erp'])
 
 const updatedAt = computed(() => {
   const ts = metaList.value
@@ -81,8 +99,7 @@ const updatedAt = computed(() => {
 
 <template>
   <header class="top">
-    <h1>投资参考数据</h1>
-    <span class="sub">自用 · A股指数 / 涨跌中位数 / 两融 / 国债收益率</span>
+    <h1>证券与宏观参考数据</h1>
     <span style="flex: 1"></span>
     <div class="range-group">
       <button
@@ -93,7 +110,11 @@ const updatedAt = computed(() => {
       >
         {{ r.label }}
       </button>
-      <span class="shortcut-hint" title="键盘快捷键">1/2/3/4</span>
+      <span class="shortcut-hint" title="键盘快捷键：1/2/3/4 时间范围，G 布局切换">1/2/3/4 G</span>
+      <span class="view-sep"></span>
+      <button class="range-btn view-btn" :title="single ? '两列网格' : '单行全宽'" @click="toggleView">
+        {{ single ? '网格' : '单行' }}
+      </button>
     </div>
   </header>
 
@@ -102,7 +123,19 @@ const updatedAt = computed(() => {
   <template v-else>
     <div class="metric-strip">
       <MetricCard
-        v-for="p in pills"
+        v-for="p in pills.filter((x) => x.row === 1)"
+        :key="p.id"
+        :label="p.label"
+        :unit="p.unit"
+        :decimals="p.decimals"
+        :delta-mode="p.deltaMode"
+        :value="p.value"
+        :prev="p.prev"
+      />
+    </div>
+    <div class="metric-strip row2">
+      <MetricCard
+        v-for="p in pills.filter((x) => x.row === 2)"
         :key="p.id"
         :label="p.label"
         :unit="p.unit"
@@ -113,7 +146,7 @@ const updatedAt = computed(() => {
       />
     </div>
 
-    <div class="grid">
+    <div class="grid" :class="{ single }">
       <section v-for="c in CHART_LAYOUT" :key="c.id" class="card">
         <div class="card-head">
           <span class="card-title">{{ c.title }}</span>
@@ -163,5 +196,30 @@ const updatedAt = computed(() => {
   align-self: center;
   margin-left: 2px;
   user-select: none;
+}
+
+.metric-strip.row2 {
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+
+.view-sep {
+  width: 1px;
+  height: 14px;
+  background: var(--border);
+  margin: 0 6px;
+  align-self: center;
+}
+
+.grid.single {
+  grid-template-columns: 1fr;
+}
+
+/* 移动端：网格已是单列，切换入口无意义，隐藏 */
+@media (max-width: 640px) {
+  .view-btn,
+  .view-sep {
+    display: none;
+  }
 }
 </style>
