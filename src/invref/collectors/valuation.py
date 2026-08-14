@@ -1,9 +1,9 @@
-"""估值与股债性价比采集：全A PE/PB + 分位（乐咕乐股）、ERP（中证800加权 − 10Y国债）。
+"""估值与股债性价比采集：全A PE/PB + 分位（乐咕乐股）、ERP（中证800(000906)加权 − 10Y国债）。
 
 口径说明：
 - 全A PE/PB 取乐咕乐股「全A等权」序列（TTM PE / 等权PB），历史自 2005；
   分位为本地全历史滚动分位（截至当日、含当日，值<=当日值的交易日占比）。
-- ERP（股债性价比）= 中证800 加权滚动EP(100/PE) − 10Y国债（取自本库 bond:cn:10y，
+- ERP（股债性价比）= 中证800(000906) 加权滚动EP(100/PE) − 10Y国债（取自本库 bond:cn:10y，
   须在国债采集之后运行）。加权口径与市场通行定义一致；中证800 为全A 的免费加权代理。
 """
 from __future__ import annotations
@@ -71,12 +71,12 @@ def _fetch_legulegu_pb() -> list[tuple[str, float, None]]:
 
 
 def _fetch_csi800_pe() -> list[tuple[str, float, None]]:
-    """中证800 加权滚动市盈率（乐咕乐股，全历史）。"""
+    """中证800(000906) 加权滚动市盈率（乐咕乐股，全历史）。"""
     import akshare as ak
 
     df = retry(lambda: ak.stock_index_pe_lg(symbol="中证800"))
     if df is None or df.empty:
-        raise RuntimeError("中证800 PE empty")
+        raise RuntimeError("中证800(000906) PE empty")
     rows = []
     for _, r in df.iterrows():
         d = str(r["日期"])[:10]
@@ -84,7 +84,7 @@ def _fetch_csi800_pe() -> list[tuple[str, float, None]]:
         if d and v is not None:
             rows.append((d, v, None))
     if not rows:
-        raise RuntimeError("中证800 加权PE empty")
+        raise RuntimeError("中证800(000906) 加权PE empty")
     return rows
 
 

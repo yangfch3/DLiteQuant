@@ -105,7 +105,7 @@ function marketOption(chart: ChartConfig, data: Record<string, Point[]>, range: 
   return {
     animation: false,
     tooltip: TOOLTIP,
-    legend: { ...LEGEND, data: ['中证全指', '成交额(亿)'] },
+    legend: { ...LEGEND, data: ['中证全指(000985)', '成交额(亿)'] },
     axisPointer: { link: [{ xAxisIndex: 'all' }] },
     grid: [
       { left: 64, right: 64, top: 32, height: '52%' },
@@ -125,7 +125,7 @@ function marketOption(chart: ChartConfig, data: Record<string, Point[]>, range: 
     ],
     series: [
       {
-        name: '中证全指',
+        name: '中证全指(000985)',
         type: 'line',
         data: close,
         xAxisIndex: 0,
@@ -201,13 +201,18 @@ function indexOption(chart: ChartConfig, data: Record<string, Point[]>, range: R
   const dates = pts.map((p) => p.date)
   const vals = pts.map((p) => p.value)
   const ma20 = ma(vals, 20)
+  // ETF 净值量级（如 1.365），保留 3 位小数
+  const indexTooltip = {
+    ...TOOLTIP,
+    valueFormatter: (v: unknown) => (v == null ? '-' : Number(v).toFixed(3)),
+  }
   return {
     animation: false,
-    tooltip: TOOLTIP,
+    tooltip: indexTooltip,
     legend: { ...LEGEND, data: ['收盘', 'MA20'] },
     grid: { left: 56, right: 24, top: 32, bottom: 56 },
     xAxis: { type: 'category', data: dates, axisLabel: AXIS_LABEL, axisLine: { lineStyle: { color: '#2b3340' } } },
-    yAxis: { type: 'value', scale: true, splitLine: SPLIT, axisLabel: AXIS_LABEL },
+    yAxis: { type: 'value', scale: true, splitLine: SPLIT, axisLabel: { ...AXIS_LABEL, formatter: (v: number) => v.toFixed(3) } },
     dataZoom: [ZOOM_INSIDE, ZOOM_SLIDER],
     series: [
       {
