@@ -1,0 +1,29 @@
+[project]
+name = "invref"
+version = "0.1.0"
+description = "自用投资参考数据查询站点：A股指数走势/全A涨跌中位数/两融余额/国债收益率"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "akshare>=1.14.0",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "apscheduler>=3.10.4",
+    "baostock>=0.8.9",
+]
+
+[project.scripts]
+invref-collect = "invref.scripts.daily_update:main"
+invref-backfill = "invref.scripts.backfill_median:main"
+invref-export = "invref.scripts.export_static:main"
+invref-api = "invref.api.main:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/invref"]
+
+[tool.uv]
+package = true
