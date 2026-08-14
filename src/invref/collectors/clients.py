@@ -30,24 +30,31 @@ JIN10_MARGIN = {
 
 
 def em_clist_all() -> list[dict]:
-    """东财全市场A股实时行情列表（分页），字段含 f2 最新价 / f3 涨跌幅% / f12 代码 / f14 名称。"""
+    """东财全市场A股实时行情列表（分页），字段含 f2 最新价 / f3 涨跌幅% / f12 代码 / f14 名称。
+
+    每页请求都带重试（GHA/Azure 等网络对东财偶发超时），超时 20s。
+    """
     out: list[dict] = []
     page = 1
     while True:
-        r = requests.get(
-            f"https://{EM_HOST}/api/qt/clist/get",
-            params={
-                "pn": page, "pz": 100, "po": 1, "np": 1, "fltt": 2, "invt": 2,
-                "fid": "f3", "fs": EM_CLIST_FS, "fields": "f2,f3,f12,f14",
-            },
-            headers=UA, timeout=15,
-        )
-        r.raise_for_status()
-        d = r.json().get("data") or {}
+
+        def _fetch():
+            r = requests.get(
+                f"https://{EM_HOST}/api/qt/clist/get",
+                params={
+                    "pn": page, "pz": 100, "po": 1, "np": 1, "fltt": 2, "invt": 2,
+                    "fid": "f3", "fs": EM_CLIST_FS, "fields": "f2,f3,f12,f14",
+                },
+                headers=UA, timeout=20,
+            )
+            r.raise_for_status()
+            return r.json()
+
+        d = retry(_fetch, attempts=3, delay=1.5).get("data") or {}
         diff = d.get("diff") or []
         out.extend(diff)
         total = int(d.get("total") or 0)
-        if not diff or len(out) >= total:
+        if not diff or len(out) >= total or page >= 200:
             break
         page += 1
         time.sleep(0.05)

@@ -33,7 +33,7 @@ jobs:
       - name: 采集数据（全量幂等）并导出静态 JSON
         run: |
           python -m invref.scripts.daily_update
-          python -m invref.scripts.backfill_median --years 2 --threads 8
+          python -m invref.scripts.backfill_median --years 2 --threads 10
           python -m invref.scripts.export_static
 
       - uses: actions/setup-node@v4

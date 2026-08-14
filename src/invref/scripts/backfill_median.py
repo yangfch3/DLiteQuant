@@ -5,21 +5,44 @@
 
 说明：
 - 前复权收盘价计算的涨跌幅≈交易所口径（已做除权调整）；
-- 代码列表来自东财 clist（沪深京A），腾讯不支持的代码自动跳过（含部分北交所）；
+- 代码列表来自东财 clist（沪深京A），带重试；失败时回退到上次成功保存的缓存
+  （data/a_share_codes.json，缺新上市股票几天可接受）；
+- 腾讯不支持的代码自动跳过（含部分北交所）；
 - 不含"今天"（当日数据由每日实时快照采集，避免盘中/收盘口径冲突）。
 """
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, timedelta
 
-from .. import db, repo
+from .. import config, db, repo
 from ..collectors import clients
+from ..collectors.base import retry
 
 LOG_FORMAT = "%(asctime)s %(levelname)-7s %(name)s | %(message)s"
+
+CODES_CACHE = config.DATA_DIR / "a_share_codes.json"
+
+
+def _load_codes(log) -> list[str]:
+    try:
+        items = retry(clients.em_clist_all, attempts=3, delay=2.0)
+        codes = [x["f12"] for x in items if x.get("f12")]
+        if codes:
+            config.DATA_DIR.mkdir(parents=True, exist_ok=True)
+            CODES_CACHE.write_text(json.dumps(codes), encoding="utf-8")
+            return codes
+    except Exception as e:  # noqa: BLE001
+        log.warning("代码列表拉取失败: %s", e)
+    if CODES_CACHE.exists():
+        cached = json.loads(CODES_CACHE.read_text(encoding="utf-8"))
+        log.warning("使用缓存代码列表 %d 只（数据源 %s 不可达）", len(cached), clients.EM_HOST)
+        return cached
+    raise RuntimeError("代码列表获取失败且无缓存可用")
 
 
 def _fetch_stock(code: str, start_s: str, end_s: str) -> list[tuple[str, float]]:
@@ -28,7 +51,10 @@ def _fetch_stock(code: str, start_s: str, end_s: str) -> list[tuple[str, float]]
     out: list[tuple[str, float]] = []
     s = start_s
     while s < end_s:
-        kls = clients.tencent_kline(tx_code, s, end_s, count=640)
+        try:
+            kls = retry(lambda: clients.tencent_kline(tx_code, s, end_s, count=640), attempts=2, delay=1.0)
+        except Exception:  # noqa: BLE001
+            break
         if not kls:
             break
         prev: float | None = None
@@ -63,8 +89,7 @@ def main(argv: list[str] | None = None) -> int:
     end = date.today() - timedelta(days=1)
     start = end - timedelta(days=args.years * 366)
     log.info("获取全市场代码列表…")
-    items = clients.em_clist_all()
-    codes = [x["f12"] for x in items if x.get("f12")]
+    codes = _load_codes(log)
     log.info("共 %d 只股票，%d 线程拉取腾讯日K（%s ~ %s）…", len(codes), args.threads, start, end)
 
     agg: dict[str, list[float]] = {}
@@ -81,6 +106,10 @@ def main(argv: list[str] | None = None) -> int:
             if done % 500 == 0:
                 log.info("进度 %d/%d", done, len(codes))
     log.info("拉取完成，共 %d 个交易日，开始聚合…", len(agg))
+
+    if len(agg) < 50:
+        log.error("有效交易日太少（%d），可能腾讯K线在当前网络不可达，不写入", len(agg))
+        return 1
 
     rows = []
     for d in sorted(agg):
