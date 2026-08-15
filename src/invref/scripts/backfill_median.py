@@ -46,33 +46,41 @@ def _load_codes(log) -> list[str]:
 
 
 def _fetch_stock(code: str, start_s: str, end_s: str) -> list[tuple[str, float]]:
-    """按股拉取前复权日K（自动翻页），返回 [(date, pct)]。"""
+    """按股从 end 往前翻页拉取前复权日K，返回 [(date, pct)]（日期正序）。
+
+    腾讯 fqkline 接口忽略 start、只返回截至 end 的最近 count(≤640) 根，
+    因此必须从 end 往前翻页：每批取最近 640 根，下一批以本批第一根的前一天为 end。
+    """
     tx_code = clients.tencent_code_of(code)
-    out: list[tuple[str, float]] = []
-    s = start_s
-    while s < end_s:
+    closes: dict[str, float] = {}
+    e = end_s
+    while True:
         try:
-            kls = retry(lambda: clients.tencent_kline(tx_code, s, end_s, count=640), attempts=2, delay=1.0)
+            kls = retry(lambda: clients.tencent_kline(tx_code, start_s, e, count=640), attempts=2, delay=1.0)
         except Exception:  # noqa: BLE001
             break
         if not kls:
             break
-        prev: float | None = None
         for k in kls:
             try:
-                close = float(k[2])
+                closes[k[0]] = float(k[2])
             except (ValueError, IndexError):
                 continue
-            if prev is not None and prev > 0:
-                out.append((k[0], round((close - prev) / prev * 100, 4)))
-            prev = close
-        if len(kls) < 640:
+        first = kls[0][0]
+        if len(kls) < 640 or first <= start_s:
             break
-        last = kls[-1][0]
-        nd = date.fromisoformat(last) + timedelta(days=1)
-        if nd >= date.fromisoformat(end_s):
+        nd = date.fromisoformat(first) - timedelta(days=1)
+        if nd.isoformat() >= e:  # 防死循环
             break
-        s = nd.isoformat()
+        e = nd.isoformat()
+    # 日期正序，逐日计算涨跌幅（跨批边界由相邻两日收盘价衔接，不会丢）
+    out: list[tuple[str, float]] = []
+    prev: float | None = None
+    for d in sorted(closes):
+        c = closes[d]
+        if prev is not None and prev > 0:
+            out.append((d, round((c - prev) / prev * 100, 4)))
+        prev = c
     return out
 
 

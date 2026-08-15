@@ -24,7 +24,11 @@ EM_CLIST_FS = "m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23,m:0+t:81+s:2048"
 EM_DC = "https://datacenter-web.eastmoney.com/api/data/v1/get"
 
 CSINDEX_PERF = "https://www.csindex.com.cn/csindex-home/perf/index-perf"
-TENCENT_KLINE = "https://web.ifzq.gtimg.cn/appstock/app/fqkline/get"
+# 腾讯K线：web.ifzq 可能被 WAF 拦，回退到 ifzq（按序尝试）
+TENCENT_KLINE = [
+    "https://web.ifzq.gtimg.cn/appstock/app/fqkline/get",
+    "https://ifzq.gtimg.cn/appstock/app/fqkline/get",
+]
 JIN10_MARGIN = {
     "sh": "https://cdn.jin10.com/data_center/reports/fs_1.json",
     "sz": "https://cdn.jin10.com/data_center/reports/fs_2.json",
@@ -119,13 +123,27 @@ def em_dc(report: str, columns: str) -> list[dict]:
 
 
 def tencent_kline(code: str, start: str, end: str, count: int = 640) -> list[list]:
-    """腾讯前复权日K。code 形如 sh600000 / sz159259。返回 [date, open, close, high, low, volume] 行。"""
+    """腾讯前复权日K。code 形如 sh600000 / sz159259。返回 [date, open, close, high, low, volume] 行。
+
+    注意：接口忽略 start，只返回截至 end 的最近 count(≤640) 根，调用方需从 end 往前翻页。
+    """
     param = f"{code},day,{start},{end},{count},qfq"
-    r = requests.get(TENCENT_KLINE, params={"param": param}, headers=UA, timeout=15)
-    r.raise_for_status()
-    j = r.json()
-    d = (j.get("data") or {}).get(code) or {}
-    return d.get("qfqday") or d.get("day") or []
+    last_err: Exception | None = None
+    for url in TENCENT_KLINE:
+        try:
+            r = requests.get(url, params={"param": param}, headers=UA, timeout=15)
+            r.raise_for_status()
+            j = r.json()
+            d = (j.get("data") or {}).get(code) or {}
+            kls = d.get("qfqday") or d.get("day") or []
+            if kls:
+                return kls
+            return []  # 请求成功但无数据（如腾讯不支持的代码），直接返回空
+        except Exception as e:  # noqa: BLE001
+            last_err = e
+    if last_err:
+        raise last_err
+    return []
 
 
 def tencent_code_of(em_code: str) -> str:
