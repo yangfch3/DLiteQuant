@@ -155,12 +155,17 @@ function medianOption(chart: ChartConfig, data: Record<string, Point[]>, range: 
   const pts = filterPoints(data[chart.metrics[0]] ?? [], range)
   const dates = pts.map((p) => p.date)
   const vals = pts.map((p) => p.value)
+  const ma10 = ma(vals, 10)
   const ma20 = ma(vals, 20)
   const rng = robustRange(vals)
   return {
     animation: false,
     tooltip: TOOLTIP,
-    legend: { ...LEGEND, data: ['涨跌中位数', 'MA20'] },
+    legend: {
+      ...LEGEND,
+      data: ['涨跌中位数', 'MA20', 'MA10'],
+      selected: { '涨跌中位数': true, 'MA20': true, 'MA10': false }, // MA10 默认隐藏，点击图例激活
+    },
     grid: { left: 56, right: 24, top: 32, bottom: 56 },
     xAxis: { type: 'category', data: dates, axisLabel: AXIS_LABEL, axisLine: { lineStyle: { color: '#2b3340' } } },
     yAxis: {
@@ -195,6 +200,14 @@ function medianOption(chart: ChartConfig, data: Record<string, Point[]>, range: 
         ...LINE_SMALL,
         lineStyle: { ...LINE_SMALL.lineStyle, color: '#d29922' },
         itemStyle: { color: '#d29922' },
+      },
+      {
+        name: 'MA10',
+        type: 'line',
+        data: ma10,
+        ...LINE_SMALL,
+        lineStyle: { ...LINE_SMALL.lineStyle, color: '#bc8cff', type: 'dashed' },
+        itemStyle: { color: '#bc8cff' },
       },
     ],
   }
