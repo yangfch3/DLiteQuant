@@ -5,4 +5,4 @@
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $root
-& "$root\.venv\Scripts\python.exe" -m invref.api.main
+uv run python -m invref.api.main

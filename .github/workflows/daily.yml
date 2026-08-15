@@ -21,20 +21,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: '3.12'
 
-      - name: 安装 Python 依赖
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e .
+      - name: 安装 Python 依赖（按 uv.lock 固定版本）
+        run: uv sync --frozen
 
       - name: 采集数据（全量幂等）并导出静态 JSON
         run: |
-          python -m invref.scripts.daily_update
-          python -m invref.scripts.backfill_median --years 2 --threads 10
-          python -m invref.scripts.export_static
+          uv run python -m invref.scripts.daily_update
+          uv run python -m invref.scripts.backfill_median --years 2 --threads 10
+          uv run python -m invref.scripts.export_static
 
       - uses: actions/setup-node@v4
         with:

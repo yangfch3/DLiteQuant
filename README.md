@@ -39,23 +39,23 @@ Vue3 + ECharts 深色主题图表页（http://127.0.0.1:8000）
 ## 快速开始
 
 ```bash
-# Python 依赖（Python 3.11+）
-python -m pip install -e .
+# Python 依赖（uv 管理，Python 3.12+；首次自动创建 .venv）
+uv sync
 
 # 首次：全量采集（指数历史/两融/国债/今日涨跌中位数）
-python -m invref.scripts.daily_update
+uv run python -m invref.scripts.daily_update
 
 # 涨跌中位数历史回填（腾讯K线并发拉取，默认近2年；可 --years 调整）
-python -m invref.scripts.backfill_median --years 2 --threads 16
+uv run python -m invref.scripts.backfill_median --years 2 --threads 16
 
 # 启动站点（API + 静态页面）→ http://127.0.0.1:8000
-python -m invref.api.main
+uv run python -m invref.api.main
 
 # 前端开发模式（可选）→ http://127.0.0.1:5173（/api 已代理到 8000）
 cd web && npm install && npm run dev
 
 # 导出静态 JSON（方案B 用）→ web/public/data/
-python -m invref.scripts.export_static
+uv run python -m invref.scripts.export_static
 ```
 
 ## 每日定时更新
@@ -63,9 +63,9 @@ python -m invref.scripts.export_static
 - 方式一（推荐，进程内调度）：启动 API 前设置环境变量后直接跑：
   ```bash
   set INVREF_SCHEDULE=1
-  python -m invref.api.main   # 内置 APScheduler，每天 19:30 自动采集
+  uv run python -m invref.api.main   # 内置 APScheduler，每天 19:30 自动采集
   ```
-- 方式二：Windows 任务计划程序每天 19:30 执行 `python -m invref.scripts.daily_update`。
+- 方式二：Windows 任务计划程序每天 19:30 执行 `uv run python -m invref.scripts.daily_update`。
 - 失败审计：`update_log` 表记录每次采集的 metric/状态/行数/错误信息。
 
 ## 目录结构
@@ -87,6 +87,7 @@ src/invref/
   scripts/             # daily_update / backfill_median / export_static
 web/                   # Vue3 + Vite + ECharts
 .github/workflows/     # 方案B：GitHub Actions 每日构建 + Pages
+uv.lock                # uv 锁文件（依赖版本固定）
 data/invref.db         # 运行时数据库（gitignore）
 ```
 

@@ -3,7 +3,7 @@ name = "invref"
 version = "0.1.0"
 description = "自用投资参考数据查询站点：A股指数走势/全A涨跌中位数/两融余额/国债收益率"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
     "akshare>=1.14.0",
     "fastapi>=0.115.0",
