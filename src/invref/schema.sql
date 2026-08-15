@@ -11,6 +11,22 @@ CREATE TABLE IF NOT EXISTS series (
 
 CREATE INDEX IF NOT EXISTS idx_series_date ON series(date);
 
+-- 个股前复权日K线（backfill_median 随中位数一并落库，备用数据；qfq 价会随后续除权调整，fetched_at 记录拉取时间）
+CREATE TABLE IF NOT EXISTS stock_kline (
+    code       TEXT    NOT NULL,             -- 东财代码（如 600000）
+    date       TEXT    NOT NULL,             -- YYYY-MM-DD
+    open       REAL,
+    close      REAL,
+    high       REAL,
+    low        REAL,
+    volume     REAL,                         -- 腾讯口径（手）
+    source     TEXT    NOT NULL DEFAULT 'tencent',
+    fetched_at TEXT    NOT NULL,
+    PRIMARY KEY (code, date)
+) WITHOUT ROWID;
+
+CREATE INDEX IF NOT EXISTS idx_stock_kline_date ON stock_kline(date);
+
 -- 采集运行日志
 CREATE TABLE IF NOT EXISTS update_log (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,

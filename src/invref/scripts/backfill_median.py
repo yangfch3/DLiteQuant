@@ -1,7 +1,8 @@
 """全A涨跌中位数历史回填：invref-backfill [--years 2] [--threads 12] [--dry-run]
 
 用腾讯前复权日K按股拉取（当前环境验证可用，替代此环境不可用的 baostock），
-由前复权收盘价计算每日涨跌幅，按日期分组求中位数，写入 all_a:median_pct。
+由前复权收盘价计算每日涨跌幅，按日期分组求中位数，写入 all_a:median_pct；
+同时把个股前复权日K线原样落库 stock_kline（备用数据，当前图表未使用）。
 
 说明：
 - 前复权收盘价计算的涨跌幅≈交易所口径（已做除权调整）；
@@ -27,6 +28,15 @@ LOG_FORMAT = "%(asctime)s %(levelname)-7s %(name)s | %(message)s"
 
 CODES_CACHE = config.DATA_DIR / "a_share_codes.json"
 
+KLine = tuple[str, float, float, float, float, float]  # (date, open, close, high, low, volume)
+
+_KLINE_SQL = """INSERT INTO stock_kline(code, date, open, close, high, low, volume, source, fetched_at)
+                VALUES(?,?,?,?,?,?,?,?,?)
+                ON CONFLICT(code, date) DO UPDATE SET
+                  open=excluded.open, close=excluded.close, high=excluded.high,
+                  low=excluded.low, volume=excluded.volume,
+                  source=excluded.source, fetched_at=excluded.fetched_at"""
+
 
 def _load_codes(log) -> list[str]:
     try:
@@ -45,14 +55,14 @@ def _load_codes(log) -> list[str]:
     raise RuntimeError("代码列表获取失败且无缓存可用")
 
 
-def _fetch_stock(code: str, start_s: str, end_s: str) -> list[tuple[str, float]]:
-    """按股从 end 往前翻页拉取前复权日K，返回 [(date, pct)]（日期正序）。
+def _fetch_stock(code: str, start_s: str, end_s: str) -> list[KLine]:
+    """按股从 end 往前翻页拉取前复权日K，返回 [(date, open, close, high, low, volume)]（日期正序）。
 
     腾讯 fqkline 接口忽略 start、只返回截至 end 的最近 count(≤640) 根，
     因此必须从 end 往前翻页：每批取最近 640 根，下一批以本批第一根的前一天为 end。
     """
     tx_code = clients.tencent_code_of(code)
-    closes: dict[str, float] = {}
+    rows: dict[str, tuple[float, float, float, float, float]] = {}
     e = end_s
     while True:
         try:
@@ -63,7 +73,7 @@ def _fetch_stock(code: str, start_s: str, end_s: str) -> list[tuple[str, float]]
             break
         for k in kls:
             try:
-                closes[k[0]] = float(k[2])
+                rows[k[0]] = (float(k[1]), float(k[2]), float(k[3]), float(k[4]), float(k[5]))
             except (ValueError, IndexError):
                 continue
         first = kls[0][0]
@@ -73,15 +83,7 @@ def _fetch_stock(code: str, start_s: str, end_s: str) -> list[tuple[str, float]]
         if nd.isoformat() >= e:  # 防死循环
             break
         e = nd.isoformat()
-    # 日期正序，逐日计算涨跌幅（跨批边界由相邻两日收盘价衔接，不会丢）
-    out: list[tuple[str, float]] = []
-    prev: float | None = None
-    for d in sorted(closes):
-        c = closes[d]
-        if prev is not None and prev > 0:
-            out.append((d, round((c - prev) / prev * 100, 4)))
-        prev = c
-    return out
+    return [(d, *rows[d]) for d in sorted(rows)]
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -101,49 +103,68 @@ def main(argv: list[str] | None = None) -> int:
     log.info("共 %d 只股票，%d 线程拉取腾讯日K（%s ~ %s）…", len(codes), args.threads, start, end)
 
     agg: dict[str, list[float]] = {}
+    kline_total = 0
     done = 0
-    with ThreadPoolExecutor(max_workers=args.threads) as ex:
-        futs = {ex.submit(_fetch_stock, c, start.isoformat(), end.isoformat()): c for c in codes}
-        for fut in as_completed(futs):
-            try:
-                for d, p in fut.result():
-                    agg.setdefault(d, []).append(p)
-            except Exception as e:  # noqa: BLE001
-                log.debug("单股失败: %s", e)
-            done += 1
-            if done % 500 == 0:
-                log.info("进度 %d/%d", done, len(codes))
-    log.info("拉取完成，共 %d 个交易日，开始聚合…", len(agg))
-
-    if len(agg) < 50:
-        log.error("有效交易日太少（%d），可能腾讯K线在当前网络不可达，不写入", len(agg))
-        return 1
-
-    rows = []
-    for d in sorted(agg):
-        vals = sorted(agg[d])
-        n = len(vals)
-        med = vals[n // 2] if n % 2 else (vals[n // 2 - 1] + vals[n // 2]) / 2
-        up = sum(1 for v in vals if v > 0)
-        down = sum(1 for v in vals if v < 0)
-        rows.append(
-            (
-                d,
-                round(med, 2),
-                {"up": up, "down": down, "flat": n - up - down, "total": n, "up_ratio": round(up / max(n, 1), 4)},
-            )
-        )
-
-    if args.dry_run:
-        print("最近 5 个交易日：")
-        for r in rows[-5:]:
-            print("  ", r)
-        return 0
-
     with db.session() as conn:
+        now = db.utcnow()
+        with ThreadPoolExecutor(max_workers=args.threads) as ex:
+            futs = {ex.submit(_fetch_stock, c, start.isoformat(), end.isoformat()): c for c in codes}
+            for fut in as_completed(futs):
+                code = futs[fut]
+                try:
+                    kls = fut.result()
+                except Exception as e:  # noqa: BLE001
+                    log.debug("单股失败: %s", e)
+                    done += 1
+                    continue
+                if not kls:
+                    done += 1
+                    continue
+                if not args.dry_run:
+                    conn.executemany(
+                        _KLINE_SQL,
+                        [(code, k[0], *k[1:6], "tencent", now) for k in kls],
+                    )
+                    kline_total += len(kls)
+                prev: float | None = None
+                for k in kls:
+                    if prev is not None and prev > 0:
+                        agg.setdefault(k[0], []).append(round((k[2] - prev) / prev * 100, 4))
+                    prev = k[2]
+                done += 1
+                if done % 500 == 0:
+                    log.info("进度 %d/%d", done, len(codes))
+        log.info("拉取完成，共 %d 个交易日，个股K线 %d 行，开始聚合…", len(agg), kline_total)
+
+        if len(agg) < 50:
+            log.error("有效交易日太少（%d），可能腾讯K线在当前网络不可达，不写入", len(agg))
+            return 1
+
+        rows = []
+        for d in sorted(agg):
+            vals = sorted(agg[d])
+            n = len(vals)
+            med = vals[n // 2] if n % 2 else (vals[n // 2 - 1] + vals[n // 2]) / 2
+            up = sum(1 for v in vals if v > 0)
+            down = sum(1 for v in vals if v < 0)
+            rows.append(
+                (
+                    d,
+                    round(med, 2),
+                    {"up": up, "down": down, "flat": n - up - down, "total": n, "up_ratio": round(up / max(n, 1), 4)},
+                )
+            )
+
+        if args.dry_run:
+            print("最近 5 个交易日：")
+            for r in rows[-5:]:
+                print("  ", r)
+            return 0
+
         n = repo.upsert_series(conn, "all_a:median_pct", rows, source="tencent")
         repo.log_update(conn, "all_a:median_pct", end.isoformat(), n, "ok", "backfill:tencent")
-    log.info("已写入 all_a:median_pct %d 行", n)
+        repo.log_update(conn, "stock_kline", end.isoformat(), kline_total, "ok", f"codes={done}")
+    log.info("已写入 all_a:median_pct %d 行，stock_kline %d 行", n, kline_total)
     return 0
 
 
