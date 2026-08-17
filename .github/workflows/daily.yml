@@ -8,7 +8,7 @@ name: daily-data-site
 
 on:
   schedule:
-    - cron: '35 11 * * 1-5' # 每天 19:35 北京时间（交易日）
+    - cron: '45 12 * * 1-5' # 每天 19:35 北京时间（交易日）
   workflow_dispatch: {}
 
 permissions:
