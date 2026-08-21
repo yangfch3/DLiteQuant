@@ -1,4 +1,5 @@
 // 数据访问层：优先走 FastAPI /api，失败时降级到静态 JSON（方案B 模式）
+import { resolveBase } from './base'
 
 export interface Point {
   date: string
@@ -29,7 +30,7 @@ function safeName(metric: string): string {
 }
 
 function staticUrl(file: string): string {
-  return `${import.meta.env.BASE_URL}data/${file}`
+  return `${resolveBase()}data/${file}`
 }
 
 async function tryApi<T>(path: string, fallback: () => Promise<T>): Promise<T> {
