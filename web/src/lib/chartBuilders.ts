@@ -30,25 +30,25 @@ function align(series: Point[][]): { dates: string[]; cols: (number | null)[][] 
   return { dates, cols }
 }
 
-const AXIS_LABEL = { color: '#8b949e' }
-const SPLIT = { lineStyle: { color: '#1c2330' } }
+const AXIS_LABEL = { color: '#8a857a' }
+const SPLIT = { lineStyle: { color: '#e8e4dc' } }
 const TOOLTIP = {
   trigger: 'axis',
-  backgroundColor: '#0d1117',
-  borderColor: '#2b3340',
-  textStyle: { color: '#e6edf3' },
+  backgroundColor: '#ffffff',
+  borderColor: '#e4e0d8',
+  textStyle: { color: '#2a2620' },
 } as const
 const ZOOM_INSIDE = { type: 'inside', start: 0, end: 100 } as const
 const ZOOM_SLIDER = {
   type: 'slider',
   bottom: 12,
   height: 24,
-  borderColor: '#2b3340',
-  backgroundColor: '#161b22',
-  fillerColor: 'rgba(88,166,255,0.15)',
-  textStyle: { color: '#8b949e' },
+  borderColor: '#e4e0d8',
+  backgroundColor: '#f7f6f3',
+  fillerColor: 'rgba(77,107,254,0.18)',
+  textStyle: { color: '#8a857a' },
 } as const
-const LEGEND = { top: 0, textStyle: { color: '#8b949e' } } as const
+const LEGEND = { top: 0, textStyle: { color: '#8a857a' } } as const
 const LINE_SMALL = { showSymbol: false, connectNulls: true, lineStyle: { width: 1.5 } } as const
 
 // 稳健 Y 轴范围：当存在少数极值（如熔断/暴涨日）把坐标轴拉得过宽、压扁日常波动时，
@@ -93,6 +93,8 @@ export function buildOption(
       return usYieldOption(chart, data, range)
     case 'us_price':
       return usPriceOption(chart, data, range)
+    case 'us_fx':
+      return usFxOption(chart, data, range)
     case 'yield':
       return yieldOption(chart, data, range)
     case 'erp':
@@ -108,7 +110,7 @@ function marketOption(chart: ChartConfig, data: Record<string, Point[]>, range: 
   const close = pts.map((p) => p.value)
   const amount = pts.map((p) => (p.meta && p.meta.amount != null ? p.meta.amount : null))
   const barColors = close.map((v, i) =>
-    i === 0 ? '#58a6ff' : v >= close[i - 1] ? '#f85149' : '#3fb950',
+    i === 0 ? '#4d6bfe' : v >= close[i - 1] ? '#d1342f' : '#2e9e5b',
   )
   return {
     animation: false,
@@ -120,8 +122,8 @@ function marketOption(chart: ChartConfig, data: Record<string, Point[]>, range: 
       { left: 64, right: 64, top: '68%', height: '18%' },
     ],
     xAxis: [
-      { type: 'category', data: dates, gridIndex: 0, axisLabel: { show: false }, axisLine: { lineStyle: { color: '#2b3340' } } },
-      { type: 'category', data: dates, gridIndex: 1, axisLabel: AXIS_LABEL, axisLine: { lineStyle: { color: '#2b3340' } } },
+      { type: 'category', data: dates, gridIndex: 0, axisLabel: { show: false }, axisLine: { lineStyle: { color: '#e4e0d8' } } },
+      { type: 'category', data: dates, gridIndex: 1, axisLabel: AXIS_LABEL, axisLine: { lineStyle: { color: '#e4e0d8' } } },
     ],
     yAxis: [
       { type: 'value', scale: true, gridIndex: 0, splitLine: SPLIT, axisLabel: AXIS_LABEL },
@@ -139,8 +141,8 @@ function marketOption(chart: ChartConfig, data: Record<string, Point[]>, range: 
         xAxisIndex: 0,
         yAxisIndex: 0,
         ...LINE_SMALL,
-        lineStyle: { ...LINE_SMALL.lineStyle, color: '#58a6ff' },
-        itemStyle: { color: '#58a6ff' },
+        lineStyle: { ...LINE_SMALL.lineStyle, color: '#4d6bfe' },
+        itemStyle: { color: '#4d6bfe' },
       },
       {
         name: '成交额(亿)',
@@ -171,7 +173,7 @@ function medianOption(chart: ChartConfig, data: Record<string, Point[]>, range: 
       selected: { '涨跌中位数': true, 'MA20': true, 'MA10': false }, // MA10 默认隐藏，点击图例激活
     },
     grid: { left: 56, right: 24, top: 32, bottom: 56 },
-    xAxis: { type: 'category', data: dates, axisLabel: AXIS_LABEL, axisLine: { lineStyle: { color: '#2b3340' } } },
+    xAxis: { type: 'category', data: dates, axisLabel: AXIS_LABEL, axisLine: { lineStyle: { color: '#e4e0d8' } } },
     yAxis: {
       type: 'value',
       scale: true,
@@ -188,12 +190,12 @@ function medianOption(chart: ChartConfig, data: Record<string, Point[]>, range: 
         type: 'bar',
         data: vals,
         barWidth: '60%',
-        itemStyle: { color: (p: any) => (p.value > 0 ? 'rgba(248,81,73,0.72)' : p.value < 0 ? 'rgba(63,185,80,0.72)' : '#8b949e') },
+        itemStyle: { color: (p: any) => (p.value > 0 ? 'rgba(209,52,47,0.7)' : p.value < 0 ? 'rgba(46,158,91,0.7)' : '#8a857a') },
         markLine: {
           symbol: 'none',
           silent: true,
           label: { show: false },
-          lineStyle: { color: '#2b3340' },
+          lineStyle: { color: '#e4e0d8' },
           data: [{ yAxis: 0 }],
         },
       },
@@ -202,16 +204,16 @@ function medianOption(chart: ChartConfig, data: Record<string, Point[]>, range: 
         type: 'line',
         data: ma20,
         ...LINE_SMALL,
-        lineStyle: { ...LINE_SMALL.lineStyle, color: '#d29922' },
-        itemStyle: { color: '#d29922' },
+        lineStyle: { ...LINE_SMALL.lineStyle, color: '#c98a1d' },
+        itemStyle: { color: '#c98a1d' },
       },
       {
         name: 'MA10',
         type: 'line',
         data: ma10,
         ...LINE_SMALL,
-        lineStyle: { ...LINE_SMALL.lineStyle, color: '#bc8cff', type: 'dashed' },
-        itemStyle: { color: '#bc8cff' },
+        lineStyle: { ...LINE_SMALL.lineStyle, color: '#8b5cf6', type: 'dashed' },
+        itemStyle: { color: '#8b5cf6' },
       },
     ],
   }
@@ -233,7 +235,7 @@ function indexOption(chart: ChartConfig, data: Record<string, Point[]>, range: R
     tooltip: indexTooltip,
     legend: { ...LEGEND, data: ['收盘', 'MA20'] },
     grid: { left: 56, right: 24, top: 32, bottom: 56 },
-    xAxis: { type: 'category', data: dates, axisLabel: AXIS_LABEL, axisLine: { lineStyle: { color: '#2b3340' } } },
+    xAxis: { type: 'category', data: dates, axisLabel: AXIS_LABEL, axisLine: { lineStyle: { color: '#e4e0d8' } } },
     yAxis: { type: 'value', scale: true, splitLine: SPLIT, axisLabel: { ...AXIS_LABEL, formatter: (v: number) => fmtIndex(v) } },
     dataZoom: [ZOOM_INSIDE, ZOOM_SLIDER],
     series: [
@@ -242,16 +244,16 @@ function indexOption(chart: ChartConfig, data: Record<string, Point[]>, range: R
         type: 'line',
         data: vals,
         ...LINE_SMALL,
-        lineStyle: { ...LINE_SMALL.lineStyle, color: '#58a6ff' },
-        itemStyle: { color: '#58a6ff' },
+        lineStyle: { ...LINE_SMALL.lineStyle, color: '#4d6bfe' },
+        itemStyle: { color: '#4d6bfe' },
       },
       {
         name: 'MA20',
         type: 'line',
         data: ma20,
         ...LINE_SMALL,
-        lineStyle: { ...LINE_SMALL.lineStyle, color: '#d29922' },
-        itemStyle: { color: '#d29922' },
+        lineStyle: { ...LINE_SMALL.lineStyle, color: '#c98a1d' },
+        itemStyle: { color: '#c98a1d' },
       },
     ],
   }
@@ -268,7 +270,7 @@ function marginOption(chart: ChartConfig, data: Record<string, Point[]>, range: 
     tooltip: TOOLTIP,
     legend: { ...LEGEND, data: ['两融余额', '融资余额', '融券余额'] },
     grid: { left: 56, right: 64, top: 32, bottom: 56 },
-    xAxis: { type: 'category', data: dates, axisLabel: AXIS_LABEL, axisLine: { lineStyle: { color: '#2b3340' } } },
+    xAxis: { type: 'category', data: dates, axisLabel: AXIS_LABEL, axisLine: { lineStyle: { color: '#e4e0d8' } } },
     yAxis: [
       { type: 'value', scale: true, splitLine: SPLIT, axisLabel: AXIS_LABEL },
       { type: 'value', min: 0, max: 3000, splitLine: { show: false }, axisLabel: AXIS_LABEL },
@@ -281,8 +283,8 @@ function marginOption(chart: ChartConfig, data: Record<string, Point[]>, range: 
         data: total,
         yAxisIndex: 0,
         ...LINE_SMALL,
-        lineStyle: { ...LINE_SMALL.lineStyle, color: '#58a6ff', width: 2 },
-        itemStyle: { color: '#58a6ff' },
+        lineStyle: { ...LINE_SMALL.lineStyle, color: '#4d6bfe', width: 2 },
+        itemStyle: { color: '#4d6bfe' },
       },
       {
         name: '融资余额',
@@ -290,8 +292,8 @@ function marginOption(chart: ChartConfig, data: Record<string, Point[]>, range: 
         data: rz,
         yAxisIndex: 0,
         ...LINE_SMALL,
-        lineStyle: { ...LINE_SMALL.lineStyle, color: '#f85149' },
-        itemStyle: { color: '#f85149' },
+        lineStyle: { ...LINE_SMALL.lineStyle, color: '#d1342f' },
+        itemStyle: { color: '#d1342f' },
       },
       {
         name: '融券余额',
@@ -299,8 +301,8 @@ function marginOption(chart: ChartConfig, data: Record<string, Point[]>, range: 
         data: rq,
         yAxisIndex: 1,
         ...LINE_SMALL,
-        lineStyle: { ...LINE_SMALL.lineStyle, color: '#bc8cff' },
-        itemStyle: { color: '#bc8cff' },
+        lineStyle: { ...LINE_SMALL.lineStyle, color: '#8b5cf6' },
+        itemStyle: { color: '#8b5cf6' },
       },
     ],
   }
@@ -324,7 +326,7 @@ function yieldOption(chart: ChartConfig, data: Record<string, Point[]>, range: R
     tooltip: yieldTooltip,
     legend: { ...LEGEND, data: ['1Y', '10Y', '30Y', '10Y-1Y利差'] },
     grid: { left: 56, right: 24, top: 32, bottom: 56 },
-    xAxis: { type: 'category', data: dates, axisLabel: AXIS_LABEL, axisLine: { lineStyle: { color: '#2b3340' } } },
+    xAxis: { type: 'category', data: dates, axisLabel: AXIS_LABEL, axisLine: { lineStyle: { color: '#e4e0d8' } } },
     yAxis: {
       type: 'value',
       scale: true,
@@ -333,10 +335,10 @@ function yieldOption(chart: ChartConfig, data: Record<string, Point[]>, range: R
     },
     dataZoom: [ZOOM_INSIDE, ZOOM_SLIDER],
     series: [
-      { name: '1Y', type: 'line', data: cols[0], ...LINE_SMALL, lineStyle: { ...LINE_SMALL.lineStyle, color: '#d29922' }, itemStyle: { color: '#d29922' } },
-      { name: '10Y', type: 'line', data: cols[1], ...LINE_SMALL, lineStyle: { ...LINE_SMALL.lineStyle, color: '#58a6ff' }, itemStyle: { color: '#58a6ff' } },
-      { name: '30Y', type: 'line', data: cols[2], ...LINE_SMALL, lineStyle: { ...LINE_SMALL.lineStyle, color: '#bc8cff' }, itemStyle: { color: '#bc8cff' } },
-      { name: '10Y-1Y利差', type: 'line', data: spread, ...LINE_SMALL, lineStyle: { ...LINE_SMALL.lineStyle, color: '#3fb950', type: 'dashed' }, itemStyle: { color: '#3fb950' } },
+      { name: '1Y', type: 'line', data: cols[0], ...LINE_SMALL, lineStyle: { ...LINE_SMALL.lineStyle, color: '#c98a1d' }, itemStyle: { color: '#c98a1d' } },
+      { name: '10Y', type: 'line', data: cols[1], ...LINE_SMALL, lineStyle: { ...LINE_SMALL.lineStyle, color: '#4d6bfe' }, itemStyle: { color: '#4d6bfe' } },
+      { name: '30Y', type: 'line', data: cols[2], ...LINE_SMALL, lineStyle: { ...LINE_SMALL.lineStyle, color: '#8b5cf6' }, itemStyle: { color: '#8b5cf6' } },
+      { name: '10Y-1Y利差', type: 'line', data: spread, ...LINE_SMALL, lineStyle: { ...LINE_SMALL.lineStyle, color: '#2e9e5b', type: 'dashed' }, itemStyle: { color: '#2e9e5b' } },
     ],
   }
 }
@@ -383,7 +385,7 @@ function macroOption(chart: ChartConfig, data: Record<string, Point[]>, range: R
     tooltip,
     legend: { ...LEGEND, data: ['M2余额', 'M2年增率', 'M1年增率'] },
     grid: { left: 56, right: 64, top: 32, bottom: 56 },
-    xAxis: { type: 'category', data: dates, axisLabel: AXIS_LABEL, axisLine: { lineStyle: { color: '#2b3340' } } },
+    xAxis: { type: 'category', data: dates, axisLabel: AXIS_LABEL, axisLine: { lineStyle: { color: '#e4e0d8' } } },
     yAxis: [
       { type: 'value', scale: true, splitLine: SPLIT, axisLabel: { ...AXIS_LABEL, formatter: fmtAxis } },
       { type: 'value', scale: true, splitLine: { show: false }, axisLabel: { ...AXIS_LABEL, formatter: (v: number) => `${v}%` } },
@@ -396,8 +398,8 @@ function macroOption(chart: ChartConfig, data: Record<string, Point[]>, range: R
         yAxisIndex: 0,
         data: mkData(maps[0]),
         ...LINE_SMALL,
-        lineStyle: { ...LINE_SMALL.lineStyle, color: '#58a6ff', width: 2 },
-        itemStyle: { color: '#58a6ff' },
+        lineStyle: { ...LINE_SMALL.lineStyle, color: '#4d6bfe', width: 2 },
+        itemStyle: { color: '#4d6bfe' },
       },
       {
         name: 'M2年增率',
@@ -405,8 +407,8 @@ function macroOption(chart: ChartConfig, data: Record<string, Point[]>, range: R
         yAxisIndex: 1,
         data: mkYoy(maps[0]),
         ...LINE_SMALL,
-        lineStyle: { ...LINE_SMALL.lineStyle, color: '#3fb950', type: 'dashed' },
-        itemStyle: { color: '#3fb950' },
+        lineStyle: { ...LINE_SMALL.lineStyle, color: '#2e9e5b', type: 'dashed' },
+        itemStyle: { color: '#2e9e5b' },
       },
       {
         name: 'M1年增率',
@@ -414,14 +416,14 @@ function macroOption(chart: ChartConfig, data: Record<string, Point[]>, range: R
         yAxisIndex: 1,
         data: mkYoy(maps[1]),
         ...LINE_SMALL,
-        lineStyle: { ...LINE_SMALL.lineStyle, color: '#bc8cff', type: 'dashed' },
-        itemStyle: { color: '#bc8cff' },
+        lineStyle: { ...LINE_SMALL.lineStyle, color: '#8b5cf6', type: 'dashed' },
+        itemStyle: { color: '#8b5cf6' },
         // 2024-01 央行调整 M1 统计口径，yoy 序列在此有台阶（可比口径增速）
         markLine: {
           symbol: 'none',
           silent: true,
-          label: { show: true, position: 'insideEndTop', color: '#8b949e', fontSize: 11, formatter: 'M1口径调整' },
-          lineStyle: { color: '#f85149', type: 'dashed' },
+          label: { show: true, position: 'insideEndTop', color: '#8a857a', fontSize: 11, formatter: 'M1口径调整' },
+          lineStyle: { color: '#d1342f', type: 'dashed' },
           data: [{ xAxis: '2024-01-01' }],
         },
       },
@@ -491,13 +493,13 @@ function multiLineOption(
     }
     const ml: Record<string, unknown>[] = []
     if (opts.zeroLine && i === 0) {
-      ml.push({ yAxis: 0, lineStyle: { color: '#2b3340' }, label: { show: false } })
+      ml.push({ yAxis: 0, lineStyle: { color: '#e4e0d8' }, label: { show: false } })
     }
     if (opts.median && i === 0 && medianVal != null) {
       ml.push({
         yAxis: medianVal,
-        lineStyle: { color: '#f85149', type: 'dashed' },
-        label: { show: true, position: 'insideEndTop', color: '#f85149', fontSize: 11, formatter: `中值 ${fmtPct(medianVal)}%` },
+        lineStyle: { color: '#d1342f', type: 'dashed' },
+        label: { show: true, position: 'insideEndTop', color: '#d1342f', fontSize: 11, formatter: `中值 ${fmtPct(medianVal)}%` },
       })
     }
     if (ml.length) s.markLine = { symbol: 'none', silent: true, data: ml }
@@ -518,7 +520,7 @@ function multiLineOption(
     tooltip,
     legend: { ...LEGEND, data: [...lines.map((l) => l.name), ...bars.map((b) => b.name)] },
     grid: { left: 56, right: 24, top: 32, bottom: 56 },
-    xAxis: { type: 'time', axisLabel: AXIS_LABEL, axisLine: { lineStyle: { color: '#2b3340' } } },
+    xAxis: { type: 'time', axisLabel: AXIS_LABEL, axisLine: { lineStyle: { color: '#e4e0d8' } } },
     yAxis: {
       type: 'value',
       scale: true,
@@ -533,7 +535,7 @@ function multiLineOption(
 }
 
 function erpOption(chart: ChartConfig, data: Record<string, Point[]>, range: RangeKey): EChartsOption {
-  return multiLineOption(data, range, [{ name: 'ERP', metric: 'erp:csi800', color: '#58a6ff' }], {
+  return multiLineOption(data, range, [{ name: 'ERP', metric: 'erp:csi800', color: '#4d6bfe' }], {
     zeroLine: true,
     median: true,
   })
@@ -556,21 +558,54 @@ function priceOption(chart: ChartConfig, data: Record<string, Point[]>, range: R
   const y10 = filterPoints(data['bond:cn:10y'] ?? [], range)
   const realYield = realYieldBar(y10, yearAvg('price:cn:cpi_core'))
   return multiLineOption(data, range, [
-    { name: '核心CPI同比', metric: 'price:cn:cpi_core', color: '#bc8cff' },
-    { name: 'CPI同比', metric: 'price:cn:cpi', color: '#58a6ff' },
-    { name: 'PPI同比', metric: 'price:cn:ppi', color: '#d29922' },
-    { name: '核心CPI年度', points: yearAvg('price:cn:cpi_core'), color: '#3fb950', dashed: true },
+    { name: '核心CPI同比', metric: 'price:cn:cpi_core', color: '#8b5cf6' },
+    { name: 'CPI同比', metric: 'price:cn:cpi', color: '#4d6bfe' },
+    { name: 'PPI同比', metric: 'price:cn:ppi', color: '#c98a1d' },
+    { name: '核心CPI年度', points: yearAvg('price:cn:cpi_core'), color: '#2e9e5b', dashed: true },
   ], {
     zeroLine: true,
-    bars: [{ name: '10Y-核心CPI年度', points: realYield, color: 'rgba(139,148,158,0.45)' }],
+    bars: [{ name: '10Y-核心CPI年度', points: realYield, color: 'rgba(138,133,122,0.4)' }],
   })
 }
 
 function valuationOption(chart: ChartConfig, data: Record<string, Point[]>, range: RangeKey): EChartsOption {
   return multiLineOption(data, range, [
-    { name: 'PE 分位', metric: 'valuation:all_a:pe_pct', color: '#58a6ff' },
-    { name: 'PB 分位', metric: 'valuation:all_a:pb_pct', color: '#d29922' },
+    { name: 'PE 分位', metric: 'valuation:all_a:pe_pct', color: '#4d6bfe' },
+    { name: 'PB 分位', metric: 'valuation:all_a:pb_pct', color: '#c98a1d' },
   ], { yMin: 0, yMax: 100 })
+}
+
+function usFxOption(chart: ChartConfig, data: Record<string, Point[]>, range: RangeKey): EChartsOption {
+  // 美元指数(左轴) 与 USD/CNH(右轴)，量级不同用双轴
+  const dxy = filterPoints(data['fx:us:dxy'] ?? [], range)
+  const usdcnh = filterPoints(data['fx:us:usdcnh'] ?? [], range)
+  const { dates } = align([dxy, usdcnh])
+  const mkCol = (pts: Point[]) => {
+    const m = new Map(pts.map((p) => [p.date, p.value]))
+    return dates.map((d) => (m.has(d) ? (m.get(d) as number) : null))
+  }
+  const cDxy = mkCol(dxy)
+  const cCnh = mkCol(usdcnh)
+  const fxTooltip = {
+    ...TOOLTIP,
+    valueFormatter: (v: unknown) => (v == null ? '-' : Number(v).toFixed(4)),
+  }
+  return {
+    animation: false,
+    tooltip: fxTooltip,
+    legend: { ...LEGEND, data: ['美元指数', 'USD/CNH'] },
+    grid: { left: 56, right: 64, top: 32, bottom: 56 },
+    xAxis: { type: 'category', data: dates, axisLabel: AXIS_LABEL, axisLine: { lineStyle: { color: '#e4e0d8' } } },
+    yAxis: [
+      { type: 'value', scale: true, splitLine: SPLIT, axisLabel: AXIS_LABEL },
+      { type: 'value', scale: true, splitLine: { show: false }, axisLabel: AXIS_LABEL },
+    ],
+    dataZoom: [ZOOM_INSIDE, ZOOM_SLIDER],
+    series: [
+      { name: '美元指数', type: 'line', yAxisIndex: 0, data: cDxy, ...LINE_SMALL, lineStyle: { ...LINE_SMALL.lineStyle, color: '#4d6bfe', width: 2 }, itemStyle: { color: '#4d6bfe' } },
+      { name: 'USD/CNH', type: 'line', yAxisIndex: 1, data: cCnh, ...LINE_SMALL, lineStyle: { ...LINE_SMALL.lineStyle, color: '#c98a1d' }, itemStyle: { color: '#c98a1d' } },
+    ],
+  }
 }
 
 function usYieldOption(chart: ChartConfig, data: Record<string, Point[]>, range: RangeKey): EChartsOption {
@@ -612,7 +647,7 @@ function usYieldOption(chart: ChartConfig, data: Record<string, Point[]>, range:
       selected: { Fed: true, '2Y': true, '10Y': true, '30Y': true, '2Y-Fed': true, '10Y-Fed': true, '30Y-Fed': false },
     },
     grid: { left: 56, right: 56, top: 32, bottom: 56 },
-    xAxis: { type: 'category', data: dates, axisLabel: AXIS_LABEL, axisLine: { lineStyle: { color: '#2b3340' } } },
+    xAxis: { type: 'category', data: dates, axisLabel: AXIS_LABEL, axisLine: { lineStyle: { color: '#e4e0d8' } } },
     // 双 y 轴：左轴=利率线（按 3-5% 缩放），右轴=利差柱（按差值缩放），避免柱把线压扁
     yAxis: [
       {
@@ -631,13 +666,13 @@ function usYieldOption(chart: ChartConfig, data: Record<string, Point[]>, range:
     ],
     dataZoom: [ZOOM_INSIDE, ZOOM_SLIDER],
     series: [
-      { name: 'Fed', type: 'line', yAxisIndex: 0, data: fedCol, ...LINE_SMALL, lineStyle: { ...LINE_SMALL.lineStyle, color: '#f85149', width: 2, type: 'dashed' }, itemStyle: { color: '#f85149' } },
-      { name: '2Y', type: 'line', yAxisIndex: 0, data: c2, ...LINE_SMALL, lineStyle: { ...LINE_SMALL.lineStyle, color: '#58a6ff' }, itemStyle: { color: '#58a6ff' } },
-      { name: '10Y', type: 'line', yAxisIndex: 0, data: c10, ...LINE_SMALL, lineStyle: { ...LINE_SMALL.lineStyle, color: '#d29922' }, itemStyle: { color: '#d29922' } },
-      { name: '30Y', type: 'line', yAxisIndex: 0, data: c30, ...LINE_SMALL, lineStyle: { ...LINE_SMALL.lineStyle, color: '#bc8cff' }, itemStyle: { color: '#bc8cff' } },
-      { name: '2Y-Fed', type: 'bar', yAxisIndex: 1, data: spread(c2), barWidth: '20%', itemStyle: { color: 'rgba(88,166,255,0.55)' } },
-      { name: '10Y-Fed', type: 'bar', yAxisIndex: 1, data: spread(c10), barWidth: '20%', itemStyle: { color: 'rgba(210,153,34,0.55)' } },
-      { name: '30Y-Fed', type: 'bar', yAxisIndex: 1, data: spread(c30), barWidth: '20%', itemStyle: { color: 'rgba(188,140,255,0.55)' } },
+      { name: 'Fed', type: 'line', yAxisIndex: 0, data: fedCol, ...LINE_SMALL, lineStyle: { ...LINE_SMALL.lineStyle, color: '#d1342f', width: 2, type: 'dashed' }, itemStyle: { color: '#d1342f' } },
+      { name: '2Y', type: 'line', yAxisIndex: 0, data: c2, ...LINE_SMALL, lineStyle: { ...LINE_SMALL.lineStyle, color: '#4d6bfe' }, itemStyle: { color: '#4d6bfe' } },
+      { name: '10Y', type: 'line', yAxisIndex: 0, data: c10, ...LINE_SMALL, lineStyle: { ...LINE_SMALL.lineStyle, color: '#c98a1d' }, itemStyle: { color: '#c98a1d' } },
+      { name: '30Y', type: 'line', yAxisIndex: 0, data: c30, ...LINE_SMALL, lineStyle: { ...LINE_SMALL.lineStyle, color: '#8b5cf6' }, itemStyle: { color: '#8b5cf6' } },
+      { name: '2Y-Fed', type: 'bar', yAxisIndex: 1, data: spread(c2), barWidth: '20%', itemStyle: { color: 'rgba(77,107,254,0.5)' } },
+      { name: '10Y-Fed', type: 'bar', yAxisIndex: 1, data: spread(c10), barWidth: '20%', itemStyle: { color: 'rgba(201,138,29,0.5)' } },
+      { name: '30Y-Fed', type: 'bar', yAxisIndex: 1, data: spread(c30), barWidth: '20%', itemStyle: { color: 'rgba(139,92,246,0.5)' } },
     ],
   }
 }
@@ -657,11 +692,11 @@ function usPriceOption(chart: ChartConfig, data: Record<string, Point[]>, range:
   const y10 = filterPoints(data['bond:us:10y'] ?? [], range)
   const realYield = realYieldBar(y10, coreYear)
   return multiLineOption(data, range, [
-    { name: '核心CPI同比', metric: 'price:us:cpi_core', color: '#bc8cff' },
-    { name: 'CPI同比', metric: 'price:us:cpi', color: '#58a6ff' },
-    { name: '核心CPI年度', points: coreYear, color: '#3fb950', dashed: true },
+    { name: '核心CPI同比', metric: 'price:us:cpi_core', color: '#8b5cf6' },
+    { name: 'CPI同比', metric: 'price:us:cpi', color: '#4d6bfe' },
+    { name: '核心CPI年度', points: coreYear, color: '#2e9e5b', dashed: true },
   ], {
     zeroLine: true,
-    bars: [{ name: '10Y-核心CPI年度', points: realYield, color: 'rgba(139,148,158,0.45)' }],
+    bars: [{ name: '10Y-核心CPI年度', points: realYield, color: 'rgba(138,133,122,0.4)' }],
   })
 }

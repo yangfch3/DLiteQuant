@@ -186,24 +186,23 @@ def em_treasury_cn(start_date: str = "20080101") -> pd.DataFrame:
 
 
 MACROMICRO_CPI_CHART = 225  # 中国-居民消费价格[CPI]：series[0]=CPI 同比, series[1]=核心 CPI 同比
+MACROMICRO_USDCNH_CHART = 153  # 美元/人民幣(離岸) USD/CNH：series[0] 日频
 
 
-def macromicro_core_cpi() -> list[tuple[str, float]]:
-    """财经M平方-中国核心CPI月度同比（扣除食品和能源），2006-01 起。
+def macromicro_chart(chart_id: int, slug: str, series_idx: int) -> list[tuple[str, float]]:
+    """财经M平方图表数据。先 GET 图表页取页面内 stk token，再带 Bearer/Referer 调 /charts/data/{id}。
 
-    流程：先 GET 图表页取页面内 stk token，再带 Bearer/Referer 调 /charts/data/{id}。
-    返回 [(YYYY-MM-01, 同比%), ...]。
+    返回 [(YYYY-MM-DD, 值), ...]，series 序号按图表配置取（如 0=主序列、1=次级序列）。
     """
     import re
 
-    chart_id = MACROMICRO_CPI_CHART
-    page_url = f"https://www.macromicro.me/charts/{chart_id}/cn-cpi"
+    page_url = f"https://www.macromicro.me/charts/{chart_id}/{slug}"
     s = requests.Session()
     s.headers["User-Agent"] = UA["User-Agent"]
     page = retry(lambda: s.get(page_url, timeout=20))
     m = re.search(r"stk\s*[:=]\s*[\"']([^\"']+)[\"']", page.text)
     if not m:
-        raise RuntimeError("macromicro: 页面未找到 stk token")
+        raise RuntimeError(f"macromicro {chart_id}: 页面未找到 stk token")
     stk = m.group(1)
     j = retry(
         lambda: s.get(
@@ -213,13 +212,51 @@ def macromicro_core_cpi() -> list[tuple[str, float]]:
         ).json()
     )
     series = (j.get("data") or {}).get(f"c:{chart_id}", {}).get("series")
-    if not series or len(series) < 2:
-        raise RuntimeError("macromicro: 无核心 CPI 序列")
+    if not series or len(series) <= series_idx:
+        raise RuntimeError(f"macromicro {chart_id}: 无 series[{series_idx}]")
     rows = []
-    for d, v in series[1]:
+    for d, v in series[series_idx]:
         v = to_float(v)
         if v is not None:
             rows.append((str(d)[:10], v))
     if not rows:
-        raise RuntimeError("macromicro core CPI: empty")
+        raise RuntimeError(f"macromicro {chart_id}: empty")
+    return rows
+
+
+def macromicro_core_cpi() -> list[tuple[str, float]]:
+    """财经M平方-中国核心CPI月度同比（扣除食品和能源），2006-01 起。"""
+    return macromicro_chart(MACROMICRO_CPI_CHART, "cn-cpi", 1)
+
+
+def macromicro_usdcnh() -> list[tuple[str, float]]:
+    """财经M平方-美元/离岸人民币 USD/CNH 日频，2013-07 起。"""
+    return macromicro_chart(MACROMICRO_USDCNH_CHART, "usd-cnh", 0)
+
+
+YAHOO_DXY = "DX-Y.NYB"  # 美元指数（ICE）
+
+
+def yahoo_dxy() -> list[tuple[str, float]]:
+    """Yahoo Finance-美元指数日频（2016-08 起，range=10y 完整返回）。"""
+    import datetime as dt
+
+    j = retry(
+        lambda: requests.get(
+            f"https://query1.finance.yahoo.com/v8/finance/chart/{YAHOO_DXY}",
+            params={"range": "10y", "interval": "1d"},
+            headers=UA, timeout=25,
+        ).json()
+    )
+    res = j["chart"]["result"][0]
+    ts = res["timestamp"]
+    close = res["indicators"]["quote"][0]["close"]
+    rows = []
+    for t, v in zip(ts, close):
+        d = dt.date.fromtimestamp(t).isoformat()
+        v = to_float(v)
+        if v is not None:
+            rows.append((d, v))
+    if not rows:
+        raise RuntimeError("yahoo dxy: empty")
     return rows

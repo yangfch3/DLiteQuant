@@ -29,6 +29,12 @@ SINA_BONDS = [
     ("bond:us:30y", "美国30年期国债"),
 ]
 
+# (metric, 数据函数)
+FX = [
+    ("fx:us:dxy", clients.yahoo_dxy),
+    ("fx:us:usdcnh", clients.macromicro_usdcnh),
+]
+
 
 def _from_em(indicator_id: str) -> list[tuple[str, float, None]]:
     import requests
@@ -92,3 +98,8 @@ def collect(conn: sqlite3.Connection) -> None:
         _collect_one(conn, metric, "us:em_dc", lambda iid=iid: _from_em(iid))
     for metric, symbol in SINA_BONDS:
         _collect_one(conn, metric, "us:sina", lambda symbol=symbol: _from_sina(symbol))
+    for metric, fn in FX:
+        _collect_one(
+            conn, metric, "us:yahoo" if metric == "fx:us:dxy" else "us:macromicro",
+            lambda fn=fn: [(d, v, None) for d, v in fn()],
+        )

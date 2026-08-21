@@ -141,6 +141,28 @@ const pills = computed(() =>
         },
       ]
     }
+    // 美元指数与汇率卡片：主值美元指数，sub 行 USD/CNH
+    if (c.id === 'us_fx') {
+      const dxy = lastOf('fx:us:dxy')
+      const dxyPrev = prevOf('fx:us:dxy')
+      const cnh = lastOf('fx:us:usdcnh')
+      const cnhPrev = prevOf('fx:us:usdcnh')
+      return [
+        {
+          id: 'us_fx',
+          row: 2,
+          label: '美元指数、USD/CNH',
+          unit: '',
+          decimals: 2,
+          deltaMode: 'pct',
+          value: dxy?.value ?? null,
+          prev: dxyPrev?.value ?? null,
+          sub: cnh
+            ? { label: 'USD/CNH', value: cnh.value, decimals: 4, unit: '', prev: cnhPrev?.value ?? null }
+            : undefined,
+        },
+      ]
+    }
     return [
       {
         id: c.id,
@@ -166,7 +188,7 @@ const ranges: { key: RangeKey; label: string }[] = [
 ]
 
 // 卡片第二行固定为：两融 / M2 / 国债10Y / ERP / CPI-PPI / 美国指标
-const ROW2 = new Set(['margin', 'macro', 'yield', 'erp', 'price', 'us_yield', 'us_price'])
+const ROW2 = new Set(['margin', 'macro', 'yield', 'erp', 'price', 'us_yield', 'us_price', 'us_fx'])
 
 const updatedAt = computed(() => {
   const ts = metaList.value
