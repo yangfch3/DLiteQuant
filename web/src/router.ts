@@ -1,9 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import App from './App.vue'
-import { resolveBase } from './lib/base'
 
-// base 运行时解析：CI 显式 /<repo>/ 或相对部署自动推断，任意子路径可用
+// base 构建期确定：本地/API 为 '/'，GitHub Pages 子路径由 CI 传 VITE_BASE
 export const router = createRouter({
-  history: createWebHistory(resolveBase()),
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes: [{ path: '/', component: App }, { path: '/us', component: App }],
 })
