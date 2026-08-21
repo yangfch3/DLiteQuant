@@ -199,6 +199,8 @@ def macromicro_chart(chart_id: int, slug: str, series_idx: int) -> list[tuple[st
     page_url = f"https://www.macromicro.me/charts/{chart_id}/{slug}"
     s = requests.Session()
     s.headers["User-Agent"] = UA["User-Agent"]
+    # 不请求 Brotli 压缩：requests 不解压 br，会得到乱码导致 stk 解析失败；gzip 可自动解压
+    s.headers["Accept-Encoding"] = "gzip, deflate"
     page = retry(lambda: s.get(page_url, timeout=20))
     m = re.search(r"stk\s*[:=]\s*[\"']([^\"']+)[\"']", page.text)
     if not m:
