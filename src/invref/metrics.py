@@ -85,11 +85,11 @@ METRIC_META: dict[str, dict] = {
         "decimals": 2,
         "description": "美元指数 DXY（Yahoo Finance，2016-08 起）",
     },
-    "fx:us:usdcnh": {
-        "title": "美元兑离岸人民币",
+    "fx:us:usdcny": {
+        "title": "美元兑人民币(在岸)",
         "unit": "",
         "decimals": 4,
-        "description": "美元/离岸人民币 USD/CNH（财经M平方，2013-07 起）",
+        "description": "美元/在岸人民币 USD/CNY（Yahoo Finance，2016-08 起）",
     },
     "price:cn:cpi": {
         "title": "CPI 同比",
@@ -169,7 +169,7 @@ CHART_LAYOUT: list[dict] = [
     {"id": "macro", "title": "货币供应量 M1/M2", "kind": "macro", "metrics": ["macro:cn:m2", "macro:cn:m1"]},
     {"id": "price", "title": "CPI、核心CPI与PPI", "kind": "price", "metrics": ["price:cn:cpi", "price:cn:cpi_core", "price:cn:ppi"]},
     {"id": "us_yield", "title": "美联储利率与美债", "kind": "us_yield", "metrics": ["macro:us:fed_rate", "bond:us:2y", "bond:us:10y", "bond:us:30y"]},
-    {"id": "us_fx", "title": "美元指数与汇率", "kind": "us_fx", "metrics": ["fx:us:dxy", "fx:us:usdcnh"]},
+    {"id": "us_fx", "title": "美元指数与汇率", "kind": "us_fx", "metrics": ["fx:us:dxy", "fx:us:usdcny"]},
     {"id": "us_price", "title": "美国 CPI 与核心 CPI", "kind": "us_price", "metrics": ["price:us:cpi", "price:us:cpi_core"]},
     {"id": "yield", "title": "国债收益率", "kind": "yield", "metrics": ["bond:cn:10y", "bond:cn:1y", "bond:cn:30y"]},
     {"id": "erp", "title": "股债性价比", "kind": "erp", "metrics": ["erp:csi800"]},

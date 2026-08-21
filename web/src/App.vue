@@ -44,14 +44,18 @@ onMounted(() => window.addEventListener('keydown', onKeydown))
 onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 
 async function loadData() {
-  loading.value = true
+  // 只拉当前页缺失的 metric：跨页已缓存的（data 中已有的）不重复请求
+  const all = new Set<string>()
+  layout.value.forEach((c) => c.metrics.forEach((x) => all.add(x)))
+  const missing = [...all].filter((m) => !(m in data))
+  if (missing.length || metaList.value.length === 0) loading.value = true
   try {
-    const [m] = await Promise.all([fetchMeta()])
-    metaList.value = m
-    const all = new Set<string>()
-    layout.value.forEach((c) => c.metrics.forEach((x) => all.add(x)))
+    if (metaList.value.length === 0) {
+      const [m] = await Promise.all([fetchMeta()])
+      metaList.value = m
+    }
     await Promise.all(
-      [...all].map(async (metric) => {
+      missing.map(async (metric) => {
         data[metric] = await fetchSeries(metric)
       }),
     )
@@ -141,24 +145,24 @@ const pills = computed(() =>
         },
       ]
     }
-    // 美元指数与汇率卡片：主值美元指数，sub 行 USD/CNH
+    // 美元指数与汇率卡片：主值美元指数，sub 行 USD/CNY
     if (c.id === 'us_fx') {
       const dxy = lastOf('fx:us:dxy')
       const dxyPrev = prevOf('fx:us:dxy')
-      const cnh = lastOf('fx:us:usdcnh')
-      const cnhPrev = prevOf('fx:us:usdcnh')
+      const cny = lastOf('fx:us:usdcny')
+      const cnyPrev = prevOf('fx:us:usdcny')
       return [
         {
           id: 'us_fx',
           row: 2,
-          label: '美元指数、USD/CNH',
+          label: '美元指数、USD/CNY',
           unit: '',
           decimals: 2,
           deltaMode: 'pct',
           value: dxy?.value ?? null,
           prev: dxyPrev?.value ?? null,
-          sub: cnh
-            ? { label: 'USD/CNH', value: cnh.value, decimals: 4, unit: '', prev: cnhPrev?.value ?? null }
+          sub: cny
+            ? { label: 'USD/CNY', value: cny.value, decimals: 4, unit: '', prev: cnyPrev?.value ?? null }
             : undefined,
         },
       ]

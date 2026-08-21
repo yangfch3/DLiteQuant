@@ -32,7 +32,7 @@ SINA_BONDS = [
 # (metric, 数据函数)
 FX = [
     ("fx:us:dxy", clients.yahoo_dxy),
-    ("fx:us:usdcnh", clients.macromicro_usdcnh),
+    ("fx:us:usdcny", clients.yahoo_usdcny),
 ]
 
 
@@ -100,6 +100,6 @@ def collect(conn: sqlite3.Connection) -> None:
         _collect_one(conn, metric, "us:sina", lambda symbol=symbol: _from_sina(symbol))
     for metric, fn in FX:
         _collect_one(
-            conn, metric, "us:yahoo" if metric == "fx:us:dxy" else "us:macromicro",
+            conn, metric, "us:yahoo",
             lambda fn=fn: [(d, v, None) for d, v in fn()],
         )

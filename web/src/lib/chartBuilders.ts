@@ -48,7 +48,8 @@ const ZOOM_SLIDER = {
   fillerColor: 'rgba(77,107,254,0.18)',
   textStyle: { color: '#8a857a' },
 } as const
-const LEGEND = { top: 0, textStyle: { color: '#8a857a' } } as const
+// scroll 图例固定单行：窄屏折行会压到图表，改为横向滚动（移动端自动出现滚动箭头）
+const LEGEND = { top: 0, type: 'scroll', textStyle: { color: '#8a857a' } } as const
 const LINE_SMALL = { showSymbol: false, connectNulls: true, lineStyle: { width: 1.5 } } as const
 
 // 稳健 Y 轴范围：当存在少数极值（如熔断/暴涨日）把坐标轴拉得过宽、压扁日常波动时，
@@ -118,7 +119,7 @@ function marketOption(chart: ChartConfig, data: Record<string, Point[]>, range: 
     legend: { ...LEGEND, data: ['中证全指(000985)', '成交额(亿)'] },
     axisPointer: { link: [{ xAxisIndex: 'all' }] },
     grid: [
-      { left: 64, right: 64, top: 32, height: '52%' },
+      { left: 64, right: 64, top: 40, height: '52%' },
       { left: 64, right: 64, top: '68%', height: '18%' },
     ],
     xAxis: [
@@ -172,7 +173,7 @@ function medianOption(chart: ChartConfig, data: Record<string, Point[]>, range: 
       data: ['涨跌中位数', 'MA20', 'MA10'],
       selected: { '涨跌中位数': true, 'MA20': true, 'MA10': false }, // MA10 默认隐藏，点击图例激活
     },
-    grid: { left: 56, right: 24, top: 32, bottom: 56 },
+    grid: { left: 56, right: 24, top: 40, bottom: 56 },
     xAxis: { type: 'category', data: dates, axisLabel: AXIS_LABEL, axisLine: { lineStyle: { color: '#e4e0d8' } } },
     yAxis: {
       type: 'value',
@@ -234,7 +235,7 @@ function indexOption(chart: ChartConfig, data: Record<string, Point[]>, range: R
     animation: false,
     tooltip: indexTooltip,
     legend: { ...LEGEND, data: ['收盘', 'MA20'] },
-    grid: { left: 56, right: 24, top: 32, bottom: 56 },
+    grid: { left: 56, right: 24, top: 40, bottom: 56 },
     xAxis: { type: 'category', data: dates, axisLabel: AXIS_LABEL, axisLine: { lineStyle: { color: '#e4e0d8' } } },
     yAxis: { type: 'value', scale: true, splitLine: SPLIT, axisLabel: { ...AXIS_LABEL, formatter: (v: number) => fmtIndex(v) } },
     dataZoom: [ZOOM_INSIDE, ZOOM_SLIDER],
@@ -269,7 +270,7 @@ function marginOption(chart: ChartConfig, data: Record<string, Point[]>, range: 
     animation: false,
     tooltip: TOOLTIP,
     legend: { ...LEGEND, data: ['两融余额', '融资余额', '融券余额'] },
-    grid: { left: 56, right: 64, top: 32, bottom: 56 },
+    grid: { left: 56, right: 64, top: 40, bottom: 56 },
     xAxis: { type: 'category', data: dates, axisLabel: AXIS_LABEL, axisLine: { lineStyle: { color: '#e4e0d8' } } },
     yAxis: [
       { type: 'value', scale: true, splitLine: SPLIT, axisLabel: AXIS_LABEL },
@@ -325,7 +326,7 @@ function yieldOption(chart: ChartConfig, data: Record<string, Point[]>, range: R
     animation: false,
     tooltip: yieldTooltip,
     legend: { ...LEGEND, data: ['1Y', '10Y', '30Y', '10Y-1Y利差'] },
-    grid: { left: 56, right: 24, top: 32, bottom: 56 },
+    grid: { left: 56, right: 24, top: 40, bottom: 56 },
     xAxis: { type: 'category', data: dates, axisLabel: AXIS_LABEL, axisLine: { lineStyle: { color: '#e4e0d8' } } },
     yAxis: {
       type: 'value',
@@ -384,7 +385,7 @@ function macroOption(chart: ChartConfig, data: Record<string, Point[]>, range: R
     animation: false,
     tooltip,
     legend: { ...LEGEND, data: ['M2余额', 'M2年增率', 'M1年增率'] },
-    grid: { left: 56, right: 64, top: 32, bottom: 56 },
+    grid: { left: 56, right: 64, top: 40, bottom: 56 },
     xAxis: { type: 'category', data: dates, axisLabel: AXIS_LABEL, axisLine: { lineStyle: { color: '#e4e0d8' } } },
     yAxis: [
       { type: 'value', scale: true, splitLine: SPLIT, axisLabel: { ...AXIS_LABEL, formatter: fmtAxis } },
@@ -519,7 +520,7 @@ function multiLineOption(
     animation: false,
     tooltip,
     legend: { ...LEGEND, data: [...lines.map((l) => l.name), ...bars.map((b) => b.name)] },
-    grid: { left: 56, right: 24, top: 32, bottom: 56 },
+    grid: { left: 56, right: 24, top: 40, bottom: 56 },
     xAxis: { type: 'time', axisLabel: AXIS_LABEL, axisLine: { lineStyle: { color: '#e4e0d8' } } },
     yAxis: {
       type: 'value',
@@ -576,16 +577,16 @@ function valuationOption(chart: ChartConfig, data: Record<string, Point[]>, rang
 }
 
 function usFxOption(chart: ChartConfig, data: Record<string, Point[]>, range: RangeKey): EChartsOption {
-  // 美元指数(左轴) 与 USD/CNH(右轴)，量级不同用双轴
+  // 美元指数(左轴) 与 USD/CNY(右轴)，量级不同用双轴
   const dxy = filterPoints(data['fx:us:dxy'] ?? [], range)
-  const usdcnh = filterPoints(data['fx:us:usdcnh'] ?? [], range)
-  const { dates } = align([dxy, usdcnh])
+  const usdcny = filterPoints(data['fx:us:usdcny'] ?? [], range)
+  const { dates } = align([dxy, usdcny])
   const mkCol = (pts: Point[]) => {
     const m = new Map(pts.map((p) => [p.date, p.value]))
     return dates.map((d) => (m.has(d) ? (m.get(d) as number) : null))
   }
   const cDxy = mkCol(dxy)
-  const cCnh = mkCol(usdcnh)
+  const cCny = mkCol(usdcny)
   const fxTooltip = {
     ...TOOLTIP,
     valueFormatter: (v: unknown) => (v == null ? '-' : Number(v).toFixed(4)),
@@ -593,8 +594,8 @@ function usFxOption(chart: ChartConfig, data: Record<string, Point[]>, range: Ra
   return {
     animation: false,
     tooltip: fxTooltip,
-    legend: { ...LEGEND, data: ['美元指数', 'USD/CNH'] },
-    grid: { left: 56, right: 64, top: 32, bottom: 56 },
+    legend: { ...LEGEND, data: ['美元指数', 'USD/CNY'] },
+    grid: { left: 56, right: 64, top: 40, bottom: 56 },
     xAxis: { type: 'category', data: dates, axisLabel: AXIS_LABEL, axisLine: { lineStyle: { color: '#e4e0d8' } } },
     yAxis: [
       { type: 'value', scale: true, splitLine: SPLIT, axisLabel: AXIS_LABEL },
@@ -603,7 +604,7 @@ function usFxOption(chart: ChartConfig, data: Record<string, Point[]>, range: Ra
     dataZoom: [ZOOM_INSIDE, ZOOM_SLIDER],
     series: [
       { name: '美元指数', type: 'line', yAxisIndex: 0, data: cDxy, ...LINE_SMALL, lineStyle: { ...LINE_SMALL.lineStyle, color: '#4d6bfe', width: 2 }, itemStyle: { color: '#4d6bfe' } },
-      { name: 'USD/CNH', type: 'line', yAxisIndex: 1, data: cCnh, ...LINE_SMALL, lineStyle: { ...LINE_SMALL.lineStyle, color: '#c98a1d' }, itemStyle: { color: '#c98a1d' } },
+      { name: 'USD/CNY', type: 'line', yAxisIndex: 1, data: cCny, ...LINE_SMALL, lineStyle: { ...LINE_SMALL.lineStyle, color: '#c98a1d' }, itemStyle: { color: '#c98a1d' } },
     ],
   }
 }
@@ -646,7 +647,7 @@ function usYieldOption(chart: ChartConfig, data: Record<string, Point[]>, range:
       data: ['Fed', '2Y', '10Y', '30Y', '2Y-Fed', '10Y-Fed', '30Y-Fed'],
       selected: { Fed: true, '2Y': true, '10Y': true, '30Y': true, '2Y-Fed': true, '10Y-Fed': true, '30Y-Fed': false },
     },
-    grid: { left: 56, right: 56, top: 32, bottom: 56 },
+    grid: { left: 56, right: 56, top: 40, bottom: 56 },
     xAxis: { type: 'category', data: dates, axisLabel: AXIS_LABEL, axisLine: { lineStyle: { color: '#e4e0d8' } } },
     // 双 y 轴：左轴=利率线（按 3-5% 缩放），右轴=利差柱（按差值缩放），避免柱把线压扁
     yAxis: [

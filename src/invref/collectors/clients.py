@@ -237,15 +237,16 @@ def macromicro_usdcnh() -> list[tuple[str, float]]:
 
 
 YAHOO_DXY = "DX-Y.NYB"  # 美元指数（ICE）
+YAHOO_USDCNY = "CNY=X"  # 美元兑在岸人民币
 
 
-def yahoo_dxy() -> list[tuple[str, float]]:
-    """Yahoo Finance-美元指数日频（2016-08 起，range=10y 完整返回）。"""
+def _yahoo_daily(symbol: str) -> list[tuple[str, float]]:
+    """Yahoo Finance 日频历史（range=10y 完整返回，2016-08 起）。"""
     import datetime as dt
 
     j = retry(
         lambda: requests.get(
-            f"https://query1.finance.yahoo.com/v8/finance/chart/{YAHOO_DXY}",
+            f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}",
             params={"range": "10y", "interval": "1d"},
             headers=UA, timeout=25,
         ).json()
@@ -260,5 +261,15 @@ def yahoo_dxy() -> list[tuple[str, float]]:
         if v is not None:
             rows.append((d, v))
     if not rows:
-        raise RuntimeError("yahoo dxy: empty")
+        raise RuntimeError(f"yahoo {symbol}: empty")
     return rows
+
+
+def yahoo_dxy() -> list[tuple[str, float]]:
+    """Yahoo Finance-美元指数日频（2016-08 起）。"""
+    return _yahoo_daily(YAHOO_DXY)
+
+
+def yahoo_usdcny() -> list[tuple[str, float]]:
+    """Yahoo Finance-美元兑在岸人民币 USD/CNY 日频（2016-08 起）。"""
+    return _yahoo_daily(YAHOO_USDCNY)
