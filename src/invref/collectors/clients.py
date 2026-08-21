@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import os
 import time
+from collections.abc import Callable
 from datetime import date
 
 import pandas as pd
@@ -265,6 +266,91 @@ def _yahoo_daily(symbol: str) -> list[tuple[str, float]]:
     if not rows:
         raise RuntimeError(f"yahoo {symbol}: empty")
     return rows
+
+
+def _dataframe_rows(df, date_col: str, value_col: str, scale: float = 1.0) -> list[tuple[str, float]]:
+    rows = []
+    for _, row in df.iterrows():
+        d = str(row[date_col])[:10]
+        v = to_float(row[value_col])
+        if d and v is not None:
+            rows.append((d, v * scale))
+    if not rows:
+        raise RuntimeError(f"dataframe {value_col}: empty")
+    return rows
+
+
+def sina_usdcny() -> list[tuple[str, float]]:
+    """新浪-中行人民币牌价的央行中间价，转换为 USD/CNY。"""
+    import akshare as ak
+
+    end_date = date.today().strftime("%Y%m%d")
+    df = retry(
+        lambda: ak.currency_boc_sina(
+            symbol="美元",
+            start_date="20160101",
+            end_date=end_date,
+        )
+    )
+    # 新浪牌价按 100 美元报价，例如 713.04 → 7.1304。
+    return _dataframe_rows(df, "日期", "央行中间价", scale=0.01)
+
+
+def _sina_futures(symbol: str) -> list[tuple[str, float]]:
+    import akshare as ak
+
+    df = retry(lambda: ak.futures_foreign_hist(symbol=symbol))
+    return _dataframe_rows(df, "date", "close")
+
+
+def sina_gold() -> list[tuple[str, float]]:
+    """新浪-COMEX 黄金期货 GC 日频。"""
+    return _sina_futures("GC")
+
+
+def sina_silver() -> list[tuple[str, float]]:
+    """新浪-COMEX 白银期货 SI 日频。"""
+    return _sina_futures("SI")
+
+
+def _first_success(
+    candidates: list[tuple[str, Callable[[], list[tuple[str, float]]]]],
+) -> tuple[list[tuple[str, float]], str]:
+    errors = []
+    for source, fn in candidates:
+        try:
+            rows = fn()
+            if rows:
+                return rows, source
+            errors.append(f"{source}: empty")
+        except Exception as e:  # noqa: BLE001
+            errors.append(f"{source}: {e}")
+    raise RuntimeError("all sources failed: " + "; ".join(errors))
+
+
+def dxy_daily() -> tuple[list[tuple[str, float]], str]:
+    return yahoo_dxy(), "us:yahoo"
+
+
+def usdcny_daily() -> tuple[list[tuple[str, float]], str]:
+    return _first_success([
+        ("us:yahoo", yahoo_usdcny),
+        ("us:sina_boc", sina_usdcny),
+    ])
+
+
+def gold_daily() -> tuple[list[tuple[str, float]], str]:
+    return _first_success([
+        ("misc:yahoo", yahoo_gold),
+        ("misc:sina", sina_gold),
+    ])
+
+
+def silver_daily() -> tuple[list[tuple[str, float]], str]:
+    return _first_success([
+        ("misc:yahoo", yahoo_silver),
+        ("misc:sina", sina_silver),
+    ])
 
 
 def yahoo_dxy() -> list[tuple[str, float]]:

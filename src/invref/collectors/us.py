@@ -1,7 +1,8 @@
 """美国宏观数据采集：Fed 利率、美债收益率、CPI 系列。
 
 源：Fed/CPI 来自东财数据中心 RPT_ECONOMICVALUE_USA（本机可达）；
-美债收益率来自新浪 bond_gb_us_sina（2022-10 起，同中国国债备源链路）。
+美债收益率来自新浪 bond_gb_us_sina（2022-10 起，同中国国债备源链路）；
+美元兑人民币支持 Yahoo 失败后的国内备源，美元指数暂无完整历史备源。
 美国 PPI（同比）各源（FRED/东财/金十/英为财情）当前环境均不可得，暂不采集。
 """
 from __future__ import annotations
@@ -31,8 +32,8 @@ SINA_BONDS = [
 
 # (metric, 数据函数)
 FX = [
-    ("fx:us:dxy", clients.yahoo_dxy),
-    ("fx:us:usdcny", clients.yahoo_usdcny),
+    ("fx:us:dxy", clients.dxy_daily),
+    ("fx:us:usdcny", clients.usdcny_daily),
 ]
 
 
@@ -93,13 +94,22 @@ def _collect_one(conn: sqlite3.Connection, metric: str, source: str, fn) -> None
         log.error("[%s] 失败: %s", metric, e)
 
 
+def _collect_with_source(conn: sqlite3.Connection, metric: str, fn) -> None:
+    try:
+        rows, source = fn()
+        rows = [(d, v, None) for d, v in rows]
+        n = repo.upsert_series(conn, metric, rows, source=source)
+        repo.log_update(conn, metric, db.utcnow()[:10], n, "ok", f"n={n},source={source}")
+        log.info("[%s] 写入 %d 行（source=%s）", metric, n, source)
+    except Exception as e:  # noqa: BLE001
+        repo.log_update(conn, metric, db.utcnow()[:10], 0, "error", str(e))
+        log.error("[%s] 失败: %s", metric, e)
+
+
 def collect(conn: sqlite3.Connection) -> None:
     for metric, iid, _ in EM_INDICATORS:
         _collect_one(conn, metric, "us:em_dc", lambda iid=iid: _from_em(iid))
     for metric, symbol in SINA_BONDS:
         _collect_one(conn, metric, "us:sina", lambda symbol=symbol: _from_sina(symbol))
     for metric, fn in FX:
-        _collect_one(
-            conn, metric, "us:yahoo",
-            lambda fn=fn: [(d, v, None) for d, v in fn()],
-        )
+        _collect_with_source(conn, metric, fn)

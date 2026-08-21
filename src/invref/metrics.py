@@ -89,7 +89,7 @@ METRIC_META: dict[str, dict] = {
         "title": "美元兑人民币(在岸)",
         "unit": "",
         "decimals": 4,
-        "description": "美元/在岸人民币 USD/CNY（Yahoo Finance，2016-08 起）",
+        "description": "美元/在岸人民币 USD/CNY（Yahoo Finance；失败时新浪央行中间价）",
     },
     "price:cn:cpi": {
         "title": "CPI 同比",
@@ -161,13 +161,13 @@ METRIC_META: dict[str, dict] = {
         "title": "Comex 黄金",
         "unit": "美元/盎司",
         "decimals": 1,
-        "description": "Comex 黄金期货收盘价（Yahoo Finance，2016-08 起）",
+        "description": "Comex 黄金期货收盘价（Yahoo Finance；失败时新浪 GC）",
     },
     "misc:comex_silver": {
         "title": "Comex 白银",
         "unit": "美元/盎司",
         "decimals": 2,
-        "description": "Comex 白银期货收盘价（Yahoo Finance，2016-08 起）",
+        "description": "Comex 白银期货收盘价（Yahoo Finance；失败时新浪 SI）",
     },
 }
 
