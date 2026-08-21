@@ -521,7 +521,20 @@ function multiLineOption(
     tooltip,
     legend: { ...LEGEND, data: [...lines.map((l) => l.name), ...bars.map((b) => b.name)] },
     grid: { left: 56, right: 24, top: 40, bottom: 56 },
-    xAxis: { type: 'time', axisLabel: AXIS_LABEL, axisLine: { lineStyle: { color: '#e4e0d8' } } },
+    xAxis: {
+      type: 'time',
+      axisLabel: {
+        ...AXIS_LABEL,
+        hideOverlap: true, // 自动隐藏重叠标签（3Y/5Y 下不叠字）
+        formatter: (v: number) => {
+          const d = new Date(v)
+          const pad = (n: number) => String(n).padStart(2, '0')
+          // 跨年显示年份，否则 MM-DD
+          return d.getMonth() === 0 && d.getDate() <= 7 ? String(d.getFullYear()) : `${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+        },
+      },
+      axisLine: { lineStyle: { color: '#e4e0d8' } },
+    },
     yAxis: {
       type: 'value',
       scale: true,
