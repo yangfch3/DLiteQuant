@@ -758,19 +758,27 @@ function miscGoldOption(chart: ChartConfig, data: Record<string, Point[]>, range
       data: ['金价', '银价', '美元指数', '10Y美债', 'Fed', '金银比'],
       selected: { '金价': true, '银价': true, '美元指数': true, '10Y美债': true, 'Fed': true, '金银比': true },
     },
-    grid: { left: 64, right: 64, top: 40, bottom: 56 },
+    // 三轴按量级分组：金价(左轴) / 银价+美元指数+金银比(右1, 60~100) / 10Y+Fed(右2, 0~5)
+    grid: { left: 64, right: 130, top: 40, bottom: 56 },
     xAxis: { type: 'category', data: dates, axisLabel: AXIS_LABEL, axisLine: { lineStyle: { color: '#e4e0d8' } } },
     yAxis: [
       { type: 'value', scale: true, splitLine: SPLIT, axisLabel: AXIS_LABEL },
-      { type: 'value', scale: true, splitLine: { show: false }, axisLabel: AXIS_LABEL },
+      {
+        type: 'value', scale: true, splitLine: { show: false }, axisLabel: AXIS_LABEL,
+        position: 'right', offset: 0,
+      },
+      {
+        type: 'value', scale: true, splitLine: { show: false }, axisLabel: AXIS_LABEL,
+        position: 'right', offset: 70,
+      },
     ],
     dataZoom: [ZOOM_INSIDE, ZOOM_SLIDER],
     series: [
       { name: '金价', type: 'line', yAxisIndex: 0, data: cGold, ...LINE_SMALL, lineStyle: { ...LINE_SMALL.lineStyle, color: '#c98a1d', width: 2 }, itemStyle: { color: '#c98a1d' } },
-      { name: '银价', type: 'line', yAxisIndex: 0, data: cSilver, ...LINE_SMALL, lineStyle: { ...LINE_SMALL.lineStyle, color: '#8b949e' }, itemStyle: { color: '#8b949e' } },
-      { name: '美元指数', type: 'line', yAxisIndex: 0, data: cDxy, ...LINE_SMALL, lineStyle: { ...LINE_SMALL.lineStyle, color: '#4d6bfe', type: 'dashed' }, itemStyle: { color: '#4d6bfe' } },
-      { name: '10Y美债', type: 'line', yAxisIndex: 0, data: cY10, ...LINE_SMALL, lineStyle: { ...LINE_SMALL.lineStyle, color: '#d1342f' }, itemStyle: { color: '#d1342f' } },
-      { name: 'Fed', type: 'line', yAxisIndex: 1, data: fedCol, ...LINE_SMALL, lineStyle: { ...LINE_SMALL.lineStyle, color: '#2e9e5b', type: 'dashed' }, itemStyle: { color: '#2e9e5b' } },
+      { name: '银价', type: 'line', yAxisIndex: 1, data: cSilver, ...LINE_SMALL, lineStyle: { ...LINE_SMALL.lineStyle, color: '#8b949e' }, itemStyle: { color: '#8b949e' } },
+      { name: '美元指数', type: 'line', yAxisIndex: 1, data: cDxy, ...LINE_SMALL, lineStyle: { ...LINE_SMALL.lineStyle, color: '#4d6bfe', type: 'dashed' }, itemStyle: { color: '#4d6bfe' } },
+      { name: '10Y美债', type: 'line', yAxisIndex: 2, data: cY10, ...LINE_SMALL, lineStyle: { ...LINE_SMALL.lineStyle, color: '#d1342f' }, itemStyle: { color: '#d1342f' } },
+      { name: 'Fed', type: 'line', yAxisIndex: 2, data: fedCol, ...LINE_SMALL, lineStyle: { ...LINE_SMALL.lineStyle, color: '#2e9e5b', type: 'dashed' }, itemStyle: { color: '#2e9e5b' } },
       { name: '金银比', type: 'bar', yAxisIndex: 1, data: ratio, barWidth: '20%', itemStyle: { color: 'rgba(139,92,246,0.4)' } },
     ],
   }
