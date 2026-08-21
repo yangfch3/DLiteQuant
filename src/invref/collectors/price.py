@@ -1,8 +1,8 @@
 """物价指数采集：CPI/PPI 月度同比（%）。
 
 源：东财数据中心 RPT_ECONOMY_CPI（2008-01 起）/ RPT_ECONOMY_PPI（2006-01 起）；
-核心 CPI（扣除食品和能源）：国家统计局 esData（2021-01 起，权威，CI 可达）为主源，
-财经M平方 macromicro.me（2006-01 起，补历史与最新，CI 上被 Cloudflare 拦时自动降级）。
+核心 CPI（扣除食品和能源）：国家统计局 esData（2021-01 起，官方权威，CI 可达），
+macromicro.me 仅作兜底补 NBS 缺失的历史（2006-2020 推算值，CI 被 Cloudflare 拦时自动跳过）。
 """
 from __future__ import annotations
 
@@ -45,19 +45,20 @@ def _rows(
 def _collect_core_cpi(conn: sqlite3.Connection) -> None:
     metric = "price:cn:cpi_core"
     errors = []
-    # NBS 官方（2021-01 起，CI 可达）优先
     merged: dict[str, float] = {}
+    # NBS 官方（2021-01 起，含 2026，CI 可达）为主源
     try:
         for d, v in clients.nbs_core_cpi():
             merged[d] = v
     except Exception as e:  # noqa: BLE001
         errors.append(f"nbs: {e}")
-    # macromicro 补历史（2006 起）与最新，CI 上被 Cloudflare 拦时自动跳过
-    try:
-        for d, v in clients.macromicro_core_cpi():
-            merged.setdefault(d, v)  # 同日期 NBS 优先
-    except Exception as e:  # noqa: BLE001
-        errors.append(f"macromicro: {e}")
+    # macromicro 兜底：仅补 NBS 未覆盖的日期（2006-2020 推算历史）
+    if merged:
+        try:
+            for d, v in clients.macromicro_core_cpi():
+                merged.setdefault(d, v)
+        except Exception as e:  # noqa: BLE001
+            errors.append(f"macromicro: {e}")
     if not merged:
         repo.log_update(conn, metric, db.utcnow()[:10], 0, "error", "; ".join(errors) or "empty")
         log.error("[%s] 全部源失败: %s", metric, errors)
@@ -65,7 +66,7 @@ def _collect_core_cpi(conn: sqlite3.Connection) -> None:
     rows = [(d, v, None) for d, v in sorted(merged.items())]
     n = repo.upsert_series(conn, metric, rows, source="price:nbs+macromicro")
     repo.log_update(conn, metric, db.utcnow()[:10], n, "ok", f"source=nbs+macromicro; {len(merged)} 行")
-    log.info("[%s] 写入 %d 行（NBS+macromicro 合并）", metric, n)
+    log.info("[%s] 写入 %d 行（NBS 为主，macromicro 补缺）", metric, n)
 
 
 def collect(conn: sqlite3.Connection) -> None:
