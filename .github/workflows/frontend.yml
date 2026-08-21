@@ -1,0 +1,54 @@
+# 纯前端快速部署：不采集数据，复用 gh-pages 上最近一次 daily 部署的数据 JSON。
+# 仅前端改动时手动触发（workflow_dispatch），几分钟完成，无需等数据采集。
+name: frontend-deploy
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      # data/*.json 不入库（.gitignore），从最近一次 daily 部署的 gh-pages 分支拉取
+      - name: 拉取上次部署的数据 JSON
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: gh-pages-data
+          fetch-depth: 1
+
+      - name: 组装数据目录
+        run: |
+          mkdir -p web/public/data
+          if [ -d gh-pages-data/data ]; then
+            cp -r gh-pages-data/data/. web/public/data/
+            echo "已复用数据: $(ls web/public/data | wc -l) 个 JSON"
+          else
+            echo "gh-pages 上暂无数据（请先跑一次 daily-data-site）"
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: 构建前端
+        working-directory: web
+        run: |
+          npm ci
+          REPO="${GITHUB_REPOSITORY##*/}"
+          VITE_BASE="/${REPO}/" npm run build
+          # GitHub Pages SPA 回退
+          cp dist/index.html dist/404.html
+
+      - name: 部署到 GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: web/dist
+          force_orphan: true
