@@ -30,12 +30,12 @@ jobs:
       - name: 安装 Python 依赖（按 uv.lock 固定版本）
         run: uv sync --frozen
 
-      - name: 采集数据（跳过个股K线回填）并导出静态 JSON
+      - name: 采集数据（跳过全A涨跌中位数）并导出静态 JSON
         run: |
-          uv run python -m invref.scripts.daily_update
+          uv run python -m invref.scripts.daily_update --skip 全A涨跌中位数
           uv run python -m invref.scripts.export_static
 
-      - name: 复用上次的 median JSON（不重新拉取个股K线）
+      - name: 复用上次的 median JSON（不重新采集全A涨跌中位数）
         run: |
           if [ -f "gh-pages-data/data/all_a_median_pct.json" ]; then
             cp "gh-pages-data/data/all_a_median_pct.json" "web/public/data/all_a_median_pct.json"
