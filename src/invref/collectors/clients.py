@@ -273,3 +273,55 @@ def yahoo_dxy() -> list[tuple[str, float]]:
 def yahoo_usdcny() -> list[tuple[str, float]]:
     """Yahoo Finance-美元兑在岸人民币 USD/CNY 日频（2016-08 起）。"""
     return _yahoo_daily(YAHOO_USDCNY)
+
+
+# 国家统计局-居民消费价格指数分类（cid 树）
+NBS_CPI_CID = "809d2522b0fe4be89142650341b19083"
+# 「不包括食品和能源居民消费价格指数 (上年同月=100)」= 核心CPI（官方 2021-01 起）
+NBS_CORE_CPI_ID = "c2050e97c49a4763a6d0f0f38bf0b4ed"
+NBS_ROOT_ID = "fc982599aa684be7969d7b90b1bd0e84"
+NBS_STREAM = "https://data.stats.gov.cn/dg/website/publicrelease/web/external/stream/esData"
+
+
+def nbs_core_cpi() -> list[tuple[str, float]]:
+    """国家统计局-核心CPI（不包括食品和能源）月度同比，2021-01 起。
+
+    官方口径（上年同月=100 → 同比%），2026 年及更早数据官方未发布该细分项时为空。
+    """
+    import json
+
+    body = {
+        "cid": NBS_CPI_CID,
+        "indicatorIds": [NBS_CORE_CPI_ID],
+        "daCatalogId": "",
+        "das": [{"text": "全国", "value": "000000000000"}],
+        "showType": "1",
+        "dts": ["202101MM-202612MM"],
+        "rootId": NBS_ROOT_ID,
+    }
+    headers = {
+        "User-Agent": UA["User-Agent"],
+        "Accept": "*/*",
+        "Content-Type": "application/json",
+        "Origin": "https://data.stats.gov.cn",
+        "Referer": "https://data.stats.gov.cn/dg/website/page.html",
+    }
+    j = retry(
+        lambda: requests.post(NBS_STREAM, data=json.dumps(body), headers=headers, timeout=30).json()
+    )
+    rows = []
+    for month in (j.get("data") or []):
+        for item in month.get("values") or []:
+            if item.get("_id") != NBS_CORE_CPI_ID:
+                continue
+            v = to_float(item.get("value"))
+            if v is not None:
+                code = str(month.get("code") or "")  # 形如 202512MM
+                if len(code) >= 8:
+                    d = f"{code[:4]}-{code[4:6]}-01"
+                    rows.append((d, round(v - 100.0, 2)))
+            break
+    if not rows:
+        raise RuntimeError("nbs core cpi: empty")
+    rows.sort()
+    return rows

@@ -1,7 +1,8 @@
 """物价指数采集：CPI/PPI 月度同比（%）。
 
 源：东财数据中心 RPT_ECONOMY_CPI（2008-01 起）/ RPT_ECONOMY_PPI（2006-01 起）；
-核心 CPI（扣除食品和能源）：财经M平方 macromicro.me（2006-01 起，东财无此字段）。
+核心 CPI（扣除食品和能源）：国家统计局 esData（2021-01 起，权威，CI 可达）为主源，
+财经M平方 macromicro.me（2006-01 起，补历史与最新，CI 上被 Cloudflare 拦时自动降级）。
 """
 from __future__ import annotations
 
@@ -43,19 +44,28 @@ def _rows(
 
 def _collect_core_cpi(conn: sqlite3.Connection) -> None:
     metric = "price:cn:cpi_core"
+    errors = []
+    # NBS 官方（2021-01 起，CI 可达）优先
+    merged: dict[str, float] = {}
     try:
-        rows = [(d, v, None) for d, v in clients.macromicro_core_cpi()]
+        for d, v in clients.nbs_core_cpi():
+            merged[d] = v
     except Exception as e:  # noqa: BLE001
-        repo.log_update(conn, metric, db.utcnow()[:10], 0, "error", str(e))
-        log.error("[%s] macromicro 源失败: %s", metric, e)
+        errors.append(f"nbs: {e}")
+    # macromicro 补历史（2006 起）与最新，CI 上被 Cloudflare 拦时自动跳过
+    try:
+        for d, v in clients.macromicro_core_cpi():
+            merged.setdefault(d, v)  # 同日期 NBS 优先
+    except Exception as e:  # noqa: BLE001
+        errors.append(f"macromicro: {e}")
+    if not merged:
+        repo.log_update(conn, metric, db.utcnow()[:10], 0, "error", "; ".join(errors) or "empty")
+        log.error("[%s] 全部源失败: %s", metric, errors)
         return
-    if not rows:
-        repo.log_update(conn, metric, db.utcnow()[:10], 0, "error", "empty")
-        log.error("[%s] macromicro 源返回空", metric)
-        return
-    n = repo.upsert_series(conn, metric, rows, source="price:macromicro")
-    repo.log_update(conn, metric, db.utcnow()[:10], n, "ok", "source=macromicro")
-    log.info("[%s] macromicro 源写入 %d 行", metric, n)
+    rows = [(d, v, None) for d, v in sorted(merged.items())]
+    n = repo.upsert_series(conn, metric, rows, source="price:nbs+macromicro")
+    repo.log_update(conn, metric, db.utcnow()[:10], n, "ok", f"source=nbs+macromicro; {len(merged)} 行")
+    log.info("[%s] 写入 %d 行（NBS+macromicro 合并）", metric, n)
 
 
 def collect(conn: sqlite3.Connection) -> None:
