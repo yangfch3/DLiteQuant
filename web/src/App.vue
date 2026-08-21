@@ -63,20 +63,23 @@ const pills = computed(() =>
     // M2 卡片：标题带最近月份(yymm)，数值换算为万亿、3 位小数
     const isM2 = metric === 'macro:cn:m2'
     const toW = (v: number | null | undefined) => (v == null ? null : v / 10000)
-    // CPI/PPI 卡片：一个卡片显示两值（主 CPI，sub 行 PPI）
+    // CPI 卡片：主值核心 CPI，sub 行 PPI（metrics 顺序：cpi, cpi_core, ppi）
     const isPrice = c.id === 'price'
-    const ppiPts = data[c.metrics[1]] ?? []
+    const corePts = data['price:cn:cpi_core'] ?? []
+    const coreLast = corePts.length ? corePts[corePts.length - 1] : null
+    const corePrev = corePts.length > 1 ? corePts[corePts.length - 2] : null
+    const ppiPts = data['price:cn:ppi'] ?? []
     const ppiLast = ppiPts.length ? ppiPts[ppiPts.length - 1] : null
     return {
       id: c.id,
       row: ROW2.has(c.id) ? 2 : 1,
-      label: isPrice ? 'CPI、PPI' : isM2 && last ? `${info.title}（${last.date.slice(2, 7).replace('-', '')}）` : info.title,
+      label: isPrice ? '核心CPI、PPI' : isM2 && last ? `${info.title}（${last.date.slice(2, 7).replace('-', '')}）` : info.title,
       unit: isM2 ? '万亿' : info.unit,
       decimals: isM2 ? 3 : (info.decimals ?? 2),
       // % 量纲的比率型指标（中位数/收益率/分位/ERP）只显示差值，不显示相对变化率
       deltaMode: info.unit === '%' ? 'point' : 'pct',
-      value: isM2 ? toW(last?.value) : (last?.value ?? null),
-      prev: isM2 ? toW(prev?.value) : (prev?.value ?? null),
+      value: isM2 ? toW(last?.value) : isPrice ? (coreLast?.value ?? null) : (last?.value ?? null),
+      prev: isM2 ? toW(prev?.value) : isPrice ? (corePrev?.value ?? null) : (prev?.value ?? null),
       sub: isPrice && ppiLast ? { label: 'PPI', value: ppiLast.value, decimals: 1, unit: '%' } : undefined,
     }
   }),

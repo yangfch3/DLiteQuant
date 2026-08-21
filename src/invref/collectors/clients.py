@@ -12,7 +12,7 @@ from datetime import date
 import pandas as pd
 import requests
 
-from .base import retry
+from .base import retry, to_float
 
 UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
 
@@ -183,3 +183,43 @@ def em_treasury_cn(start_date: str = "20080101") -> pd.DataFrame:
     import akshare as ak
 
     return ak.bond_zh_us_rate(start_date=start_date)
+
+
+MACROMICRO_CPI_CHART = 225  # 中国-居民消费价格[CPI]：series[0]=CPI 同比, series[1]=核心 CPI 同比
+
+
+def macromicro_core_cpi() -> list[tuple[str, float]]:
+    """财经M平方-中国核心CPI月度同比（扣除食品和能源），2006-01 起。
+
+    流程：先 GET 图表页取页面内 stk token，再带 Bearer/Referer 调 /charts/data/{id}。
+    返回 [(YYYY-MM-01, 同比%), ...]。
+    """
+    import re
+
+    chart_id = MACROMICRO_CPI_CHART
+    page_url = f"https://www.macromicro.me/charts/{chart_id}/cn-cpi"
+    s = requests.Session()
+    s.headers["User-Agent"] = UA["User-Agent"]
+    page = retry(lambda: s.get(page_url, timeout=20))
+    m = re.search(r"stk\s*[:=]\s*[\"']([^\"']+)[\"']", page.text)
+    if not m:
+        raise RuntimeError("macromicro: 页面未找到 stk token")
+    stk = m.group(1)
+    j = retry(
+        lambda: s.get(
+            f"https://www.macromicro.me/charts/data/{chart_id}",
+            headers={"Authorization": f"Bearer {stk}", "Referer": page_url},
+            timeout=20,
+        ).json()
+    )
+    series = (j.get("data") or {}).get(f"c:{chart_id}", {}).get("series")
+    if not series or len(series) < 2:
+        raise RuntimeError("macromicro: 无核心 CPI 序列")
+    rows = []
+    for d, v in series[1]:
+        v = to_float(v)
+        if v is not None:
+            rows.append((str(d)[:10], v))
+    if not rows:
+        raise RuntimeError("macromicro core CPI: empty")
+    return rows

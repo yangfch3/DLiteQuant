@@ -1,7 +1,7 @@
 """物价指数采集：CPI/PPI 月度同比（%）。
 
-源：东财数据中心 RPT_ECONOMY_CPI（2008-01 起）/ RPT_ECONOMY_PPI（2006-01 起）。
-核心 CPI（扣除食品和能源）无免费现成接口，暂搁置，见 NOTES。
+源：东财数据中心 RPT_ECONOMY_CPI（2008-01 起）/ RPT_ECONOMY_PPI（2006-01 起）；
+核心 CPI（扣除食品和能源）：财经M平方 macromicro.me（2006-01 起，东财无此字段）。
 """
 from __future__ import annotations
 
@@ -41,6 +41,23 @@ def _rows(
     return out
 
 
+def _collect_core_cpi(conn: sqlite3.Connection) -> None:
+    metric = "price:cn:cpi_core"
+    try:
+        rows = [(d, v, None) for d, v in clients.macromicro_core_cpi()]
+    except Exception as e:  # noqa: BLE001
+        repo.log_update(conn, metric, db.utcnow()[:10], 0, "error", str(e))
+        log.error("[%s] macromicro 源失败: %s", metric, e)
+        return
+    if not rows:
+        repo.log_update(conn, metric, db.utcnow()[:10], 0, "error", "empty")
+        log.error("[%s] macromicro 源返回空", metric)
+        return
+    n = repo.upsert_series(conn, metric, rows, source="price:macromicro")
+    repo.log_update(conn, metric, db.utcnow()[:10], n, "ok", "source=macromicro")
+    log.info("[%s] macromicro 源写入 %d 行", metric, n)
+
+
 def collect(conn: sqlite3.Connection) -> None:
     for metric, report, yoy_col, idx_col, mom_col, acc_col in SOURCES:
         cols = ",".join(x for x in [yoy_col, idx_col, acc_col, mom_col] if x)
@@ -58,3 +75,4 @@ def collect(conn: sqlite3.Connection) -> None:
         n = repo.upsert_series(conn, metric, rows, source="price:em_dc")
         repo.log_update(conn, metric, db.utcnow()[:10], n, "ok", "source=em_dc")
         log.info("[%s] 东财源写入 %d 行", metric, n)
+    _collect_core_cpi(conn)

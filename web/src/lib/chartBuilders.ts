@@ -505,22 +505,24 @@ function erpOption(chart: ChartConfig, data: Record<string, Point[]>, range: Ran
 }
 
 function priceOption(chart: ChartConfig, data: Record<string, Point[]>, range: RangeKey): EChartsOption {
-  // CPI 年度线：每年 12 个月同比的算术平均（= 官方年度 CPI / 累计口径）；
-  // 当年（进行中年份）为当年已发布月份的均值（= 官方累计同比）
-  const cpi = data['price:cn:cpi'] ?? []
-  const byYear = new Map<string, { sum: number; n: number }>()
-  for (const p of cpi) {
-    const y = p.date.slice(0, 4)
-    const e = byYear.get(y) ?? { sum: 0, n: 0 }
-    e.sum += p.value
-    e.n += 1
-    byYear.set(y, e)
+  // 年度线：每年已发布月份同比的算术平均（= 官方年度/累计口径）
+  const yearAvg = (metric: string): Point[] => {
+    const pts = data[metric] ?? []
+    const byYear = new Map<string, { sum: number; n: number }>()
+    for (const p of pts) {
+      const y = p.date.slice(0, 4)
+      const e = byYear.get(y) ?? { sum: 0, n: 0 }
+      e.sum += p.value
+      e.n += 1
+      byYear.set(y, e)
+    }
+    return pts.map((p) => ({ ...p, value: byYear.get(p.date.slice(0, 4))!.sum / byYear.get(p.date.slice(0, 4))!.n }))
   }
-  const cpiYear = cpi.map((p) => ({ ...p, value: byYear.get(p.date.slice(0, 4))!.sum / byYear.get(p.date.slice(0, 4))!.n }))
   return multiLineOption(data, range, [
+    { name: '核心CPI同比', metric: 'price:cn:cpi_core', color: '#bc8cff' },
     { name: 'CPI同比', metric: 'price:cn:cpi', color: '#58a6ff' },
     { name: 'PPI同比', metric: 'price:cn:ppi', color: '#d29922' },
-    { name: 'CPI年度', points: cpiYear, color: '#3fb950', dashed: true },
+    { name: '核心CPI年度', points: yearAvg('price:cn:cpi_core'), color: '#3fb950', dashed: true },
   ], { zeroLine: true })
 }
 
