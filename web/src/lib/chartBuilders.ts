@@ -758,8 +758,8 @@ function miscGoldOption(chart: ChartConfig, data: Record<string, Point[]>, range
       data: ['金价', '银价', '美元指数', '10Y美债', 'Fed', '金银比'],
       selected: { '金价': true, '银价': true, '美元指数': true, '10Y美债': true, 'Fed': true, '金银比': true },
     },
-    // 四轴按量级分组：金价(左) / 银价+金银比(右1, 60~70) / 美元指数(右2, 90~105) / 10Y+Fed(右3, 0~5)
-    grid: { left: 64, right: 192, top: 40, bottom: 56 },
+    // 四轴按量级分组：金价(左) / 银价+金银比(右1) / 美元指数(右2) / 10Y+Fed(右3)
+    grid: { left: 64, right: 128, top: 40, bottom: 56 },
     xAxis: { type: 'category', data: dates, axisLabel: AXIS_LABEL, axisLine: { lineStyle: { color: '#e4e0d8' } } },
     yAxis: [
       { type: 'value', scale: true, splitLine: SPLIT, axisLabel: AXIS_LABEL },
@@ -769,11 +769,11 @@ function miscGoldOption(chart: ChartConfig, data: Record<string, Point[]>, range
       },
       {
         type: 'value', scale: true, splitLine: { show: false }, axisLabel: AXIS_LABEL,
-        position: 'right', offset: 64,
+        position: 'right', offset: 42,
       },
       {
         type: 'value', scale: true, splitLine: { show: false }, axisLabel: AXIS_LABEL,
-        position: 'right', offset: 128,
+        position: 'right', offset: 84,
       },
     ],
     dataZoom: [ZOOM_INSIDE, ZOOM_SLIDER],
