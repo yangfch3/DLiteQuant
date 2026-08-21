@@ -16,6 +16,12 @@ export const METRIC_META: Record<string, MetricInfo> = {
   'margin:balance': { title: '两融余额', unit: '亿元', description: '沪深两融余额' },
   'macro:cn:m2': { title: 'M2 货币供应量', unit: '亿元', description: 'M2 月度余额及 M1/M2 年增率（东财数据中心）' },
   'macro:cn:m1': { title: 'M1 货币供应量', unit: '亿元', description: 'M1 月度余额及年增率（东财数据中心）' },
+  'macro:us:fed_rate': { title: '美联储基准利率', unit: '%', description: '美国联邦基金利率目标区间上限（东财数据中心，2008-01 起）', decimals: 2 },
+  'price:us:cpi_core': { title: '美国核心 CPI 同比', unit: '%', description: '美国核心 CPI（季调）当月同比（东财数据中心，2008-01 起）', decimals: 1 },
+  'price:us:cpi': { title: '美国 CPI 同比', unit: '%', description: '美国 CPI（非季调）当月同比（东财数据中心，2008-01 起）', decimals: 1 },
+  'bond:us:2y': { title: '美债收益率 2Y', unit: '%', description: '美国国债收益率（2年）', decimals: 4 },
+  'bond:us:10y': { title: '美债收益率 10Y', unit: '%', description: '美国国债收益率（10年）', decimals: 4 },
+  'bond:us:30y': { title: '美债收益率 30Y', unit: '%', description: '美国国债收益率（30年）', decimals: 4 },
   'price:cn:cpi': { title: 'CPI 同比', unit: '%', description: 'CPI 月度同比与 CPI 年度均值（东财数据中心）', decimals: 1 },
   'price:cn:cpi_core': { title: '核心 CPI 同比', unit: '%', description: '核心 CPI（扣除食品和能源）月度同比（财经M平方，2006-01 起）', decimals: 1 },
   'price:cn:ppi': { title: 'PPI 同比', unit: '%', description: 'PPI 月度同比（东财数据中心，2006-01 起）', decimals: 1 },
@@ -29,7 +35,7 @@ export const METRIC_META: Record<string, MetricInfo> = {
   'erp:csi800': { title: '股债性价比 ERP', unit: '%', description: '中证800(000906)加权EP(100/PE) − 10Y国债', decimals: 2 },
 }
 
-export type ChartKind = 'market' | 'median' | 'index' | 'margin' | 'yield' | 'erp' | 'valuation' | 'macro' | 'price'
+export type ChartKind = 'market' | 'median' | 'index' | 'margin' | 'yield' | 'erp' | 'valuation' | 'macro' | 'price' | 'us_yield' | 'us_price'
 
 export interface ChartConfig {
   id: string
@@ -46,6 +52,8 @@ export const CHART_LAYOUT: ChartConfig[] = [
   { id: 'margin', title: '两融数据', kind: 'margin', metrics: ['margin:balance'] },
   { id: 'macro', title: '货币供应量 M1/M2', kind: 'macro', metrics: ['macro:cn:m2', 'macro:cn:m1'] },
   { id: 'price', title: 'CPI、核心CPI与PPI', kind: 'price', metrics: ['price:cn:cpi', 'price:cn:cpi_core', 'price:cn:ppi'] },
+  { id: 'us_yield', title: '美联储利率与美债', kind: 'us_yield', metrics: ['macro:us:fed_rate', 'bond:us:2y', 'bond:us:10y', 'bond:us:30y'] },
+  { id: 'us_price', title: '美国 CPI 与核心 CPI', kind: 'us_price', metrics: ['price:us:cpi', 'price:us:cpi_core'] },
   { id: 'yield', title: '国债收益率', kind: 'yield', metrics: ['bond:cn:10y', 'bond:cn:1y', 'bond:cn:30y'] },
   { id: 'erp', title: '股债性价比', kind: 'erp', metrics: ['erp:csi800'] },
   { id: 'valuation', title: '全A估值分位', kind: 'valuation', metrics: ['valuation:all_a:pe_pct', 'valuation:all_a:pb_pct'] },

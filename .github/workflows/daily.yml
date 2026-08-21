@@ -43,6 +43,8 @@ jobs:
         run: |
           npm ci
           npm run build
+          # GitHub Pages SPA 回退：未知路径（如 /us）返回 index.html
+          cp dist/index.html dist/404.html
 
       - name: 部署到 GitHub Pages
         uses: peaceiris/actions-gh-pages@v4

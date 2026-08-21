@@ -89,6 +89,10 @@ export function buildOption(
       return macroOption(chart, data, range)
     case 'price':
       return priceOption(chart, data, range)
+    case 'us_yield':
+      return usYieldOption(chart, data, range)
+    case 'us_price':
+      return usPriceOption(chart, data, range)
     case 'yield':
       return yieldOption(chart, data, range)
     case 'erp':
@@ -431,14 +435,34 @@ type LineDef = (
   | { metric?: never; points: Point[] }
 ) & { name: string; color: string; dashed?: boolean }
 
+type BarDef = { name: string; points: Point[]; color: string }
+
+// 10Y 名义收益率 − 核心CPI年度累计均值（≈ 实际利率）。
+// 每个核心CPI月度点（每月01日）对应一根柱：取该月第一个交易日的 10Y 与当月累计均值相减，
+// 柱日期与 CPI 折线点完全对齐；未公布 CPI 的当月不生成柱。
+function realYieldBar(pts10y: Point[], coreYear: Point[]): Point[] {
+  const ys = [...pts10y].sort((a, b) => (a.date < b.date ? -1 : 1))
+  const cs = [...coreYear].sort((a, b) => (a.date < b.date ? -1 : 1))
+  const out: Point[] = []
+  let j = 0
+  for (const cy of cs) {
+    while (j < ys.length && ys[j].date < cy.date) j++
+    if (j >= ys.length) break
+    const y = ys[j].value
+    if (y != null && cy.value != null) out.push({ date: cy.date, value: +(y - cy.value).toFixed(2) })
+  }
+  return out
+}
+
 function multiLineOption(
   data: Record<string, Point[]>,
   range: RangeKey,
   lines: LineDef[],
-  opts: { yMin?: number; yMax?: number; zeroLine?: boolean; median?: boolean },
+  opts: { yMin?: number; yMax?: number; zeroLine?: boolean; median?: boolean; bars?: BarDef[] },
 ): EChartsOption {
-  const seriesData = lines.map((l) => filterPoints(l.points ?? data[l.metric!] ?? [], range))
-  const { dates, cols } = align(seriesData)
+  const bars = opts.bars ?? []
+  const linePts = lines.map((l) => filterPoints(l.points ?? data[l.metric!] ?? [], range))
+  const barPts = bars.map((b) => filterPoints(b.points, range))
   // 智能去尾：整数不显示小数（50 → 50%），非整数保留 2 位（68.76 → 68.76%）
   const fmtPct = (v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(2))
   const tooltip = {
@@ -448,18 +472,19 @@ function multiLineOption(
   // 当前周期内第一序列非空值的中位数（稳健集中趋势，抗极值）
   let medianVal: number | null = null
   if (opts.median) {
-    const vals = cols[0].filter((v): v is number => v != null)
+    const vals = linePts[0].map((p) => p.value).filter((v): v is number => v != null)
     if (vals.length) {
       const sorted = [...vals].sort((a, b) => a - b)
       const n = sorted.length
       medianVal = n % 2 ? sorted[(n - 1) / 2] : (sorted[n / 2 - 1] + sorted[n / 2]) / 2
     }
   }
+  const toData = (pts: Point[]) => pts.map((p) => [Date.parse(p.date), p.value] as const)
   const series = lines.map((l, i) => {
     const s: Record<string, unknown> = {
       name: l.name,
       type: 'line',
-      data: cols[i],
+      data: toData(linePts[i]),
       ...LINE_SMALL,
       lineStyle: { ...LINE_SMALL.lineStyle, color: l.color, ...(l.dashed ? { type: 'dashed' } : {}) },
       itemStyle: { color: l.color },
@@ -478,12 +503,22 @@ function multiLineOption(
     if (ml.length) s.markLine = { symbol: 'none', silent: true, data: ml }
     return s
   })
+  bars.forEach((b, j) => {
+    series.push({
+      name: b.name,
+      type: 'bar',
+      data: toData(barPts[j]),
+      // time 轴柱宽用固定像素（barWidth 数值单位是 px，不是时间毫秒）
+      barWidth: 3,
+      itemStyle: { color: b.color },
+    })
+  })
   return {
     animation: false,
     tooltip,
-    legend: { ...LEGEND, data: lines.map((l) => l.name) },
+    legend: { ...LEGEND, data: [...lines.map((l) => l.name), ...bars.map((b) => b.name)] },
     grid: { left: 56, right: 24, top: 32, bottom: 56 },
-    xAxis: { type: 'category', data: dates, axisLabel: AXIS_LABEL, axisLine: { lineStyle: { color: '#2b3340' } } },
+    xAxis: { type: 'time', axisLabel: AXIS_LABEL, axisLine: { lineStyle: { color: '#2b3340' } } },
     yAxis: {
       type: 'value',
       scale: true,
@@ -518,12 +553,17 @@ function priceOption(chart: ChartConfig, data: Record<string, Point[]>, range: R
     }
     return pts.map((p) => ({ ...p, value: byYear.get(p.date.slice(0, 4))!.sum / byYear.get(p.date.slice(0, 4))!.n }))
   }
+  const y10 = filterPoints(data['bond:cn:10y'] ?? [], range)
+  const realYield = realYieldBar(y10, yearAvg('price:cn:cpi_core'))
   return multiLineOption(data, range, [
     { name: '核心CPI同比', metric: 'price:cn:cpi_core', color: '#bc8cff' },
     { name: 'CPI同比', metric: 'price:cn:cpi', color: '#58a6ff' },
     { name: 'PPI同比', metric: 'price:cn:ppi', color: '#d29922' },
     { name: '核心CPI年度', points: yearAvg('price:cn:cpi_core'), color: '#3fb950', dashed: true },
-  ], { zeroLine: true })
+  ], {
+    zeroLine: true,
+    bars: [{ name: '10Y-核心CPI年度', points: realYield, color: 'rgba(139,148,158,0.45)' }],
+  })
 }
 
 function valuationOption(chart: ChartConfig, data: Record<string, Point[]>, range: RangeKey): EChartsOption {
@@ -531,4 +571,97 @@ function valuationOption(chart: ChartConfig, data: Record<string, Point[]>, rang
     { name: 'PE 分位', metric: 'valuation:all_a:pe_pct', color: '#58a6ff' },
     { name: 'PB 分位', metric: 'valuation:all_a:pb_pct', color: '#d29922' },
   ], { yMin: 0, yMax: 100 })
+}
+
+function usYieldOption(chart: ChartConfig, data: Record<string, Point[]>, range: RangeKey): EChartsOption {
+  // 序列顺序：Fed(月频，前向填充) / 2Y / 10Y / 30Y
+  const fed = filterPoints(data['macro:us:fed_rate'] ?? [], range)
+  const s2 = filterPoints(data['bond:us:2y'] ?? [], range)
+  const s10 = filterPoints(data['bond:us:10y'] ?? [], range)
+  const s30 = filterPoints(data['bond:us:30y'] ?? [], range)
+  const { dates } = align([fed, s2, s10, s30])
+  // Fed 月频 → 日频前向填充（决议后保持不变）
+  const fedCol = (() => {
+    const col: (number | null)[] = []
+    let last: number | null = null
+    const fedMap = new Map(fed.map((p) => [p.date, p.value]))
+    for (const d of dates) {
+      if (fedMap.has(d)) last = fedMap.get(d) as number
+      col.push(last)
+    }
+    return col
+  })()
+  const mkCol = (pts: Point[]) => {
+    const m = new Map(pts.map((p) => [p.date, p.value]))
+    return dates.map((d) => (m.has(d) ? (m.get(d) as number) : null))
+  }
+  const c2 = mkCol(s2)
+  const c10 = mkCol(s10)
+  const c30 = mkCol(s30)
+  const spread = (y: (number | null)[]) => y.map((v, i) => (v != null && fedCol[i] != null ? +(v - fedCol[i]!).toFixed(3) : null))
+  const yieldTooltip = {
+    ...TOOLTIP,
+    valueFormatter: (v: unknown) => (v == null ? '-' : `${Number(v).toFixed(3)}%`),
+  }
+  return {
+    animation: false,
+    tooltip: yieldTooltip,
+    legend: {
+      ...LEGEND,
+      data: ['Fed', '2Y', '10Y', '30Y', '2Y-Fed', '10Y-Fed', '30Y-Fed'],
+      selected: { Fed: true, '2Y': true, '10Y': true, '30Y': true, '2Y-Fed': true, '10Y-Fed': true, '30Y-Fed': false },
+    },
+    grid: { left: 56, right: 56, top: 32, bottom: 56 },
+    xAxis: { type: 'category', data: dates, axisLabel: AXIS_LABEL, axisLine: { lineStyle: { color: '#2b3340' } } },
+    // 双 y 轴：左轴=利率线（按 3-5% 缩放），右轴=利差柱（按差值缩放），避免柱把线压扁
+    yAxis: [
+      {
+        type: 'value',
+        scale: true,
+        splitLine: SPLIT,
+        axisLabel: { ...AXIS_LABEL, formatter: (v: number) => `${v.toFixed(1)}%` },
+      },
+      {
+        type: 'value',
+        min: -2,
+        max: 3, // 利差固定范围（实际约 -1.9 ~ 1.6）：负值柱可见且不裁切，柱高受限
+        splitLine: { show: false },
+        axisLabel: { ...AXIS_LABEL, formatter: (v: number) => `${v.toFixed(1)}%` },
+      },
+    ],
+    dataZoom: [ZOOM_INSIDE, ZOOM_SLIDER],
+    series: [
+      { name: 'Fed', type: 'line', yAxisIndex: 0, data: fedCol, ...LINE_SMALL, lineStyle: { ...LINE_SMALL.lineStyle, color: '#f85149', width: 2, type: 'dashed' }, itemStyle: { color: '#f85149' } },
+      { name: '2Y', type: 'line', yAxisIndex: 0, data: c2, ...LINE_SMALL, lineStyle: { ...LINE_SMALL.lineStyle, color: '#58a6ff' }, itemStyle: { color: '#58a6ff' } },
+      { name: '10Y', type: 'line', yAxisIndex: 0, data: c10, ...LINE_SMALL, lineStyle: { ...LINE_SMALL.lineStyle, color: '#d29922' }, itemStyle: { color: '#d29922' } },
+      { name: '30Y', type: 'line', yAxisIndex: 0, data: c30, ...LINE_SMALL, lineStyle: { ...LINE_SMALL.lineStyle, color: '#bc8cff' }, itemStyle: { color: '#bc8cff' } },
+      { name: '2Y-Fed', type: 'bar', yAxisIndex: 1, data: spread(c2), barWidth: '20%', itemStyle: { color: 'rgba(88,166,255,0.55)' } },
+      { name: '10Y-Fed', type: 'bar', yAxisIndex: 1, data: spread(c10), barWidth: '20%', itemStyle: { color: 'rgba(210,153,34,0.55)' } },
+      { name: '30Y-Fed', type: 'bar', yAxisIndex: 1, data: spread(c30), barWidth: '20%', itemStyle: { color: 'rgba(188,140,255,0.55)' } },
+    ],
+  }
+}
+
+function usPriceOption(chart: ChartConfig, data: Record<string, Point[]>, range: RangeKey): EChartsOption {
+  // 年度线：核心 CPI 当年已发布月份同比的算术平均
+  const core = data['price:us:cpi_core'] ?? []
+  const byYear = new Map<string, { sum: number; n: number }>()
+  for (const p of core) {
+    const y = p.date.slice(0, 4)
+    const e = byYear.get(y) ?? { sum: 0, n: 0 }
+    e.sum += p.value
+    e.n += 1
+    byYear.set(y, e)
+  }
+  const coreYear = core.map((p) => ({ ...p, value: byYear.get(p.date.slice(0, 4))!.sum / byYear.get(p.date.slice(0, 4))!.n }))
+  const y10 = filterPoints(data['bond:us:10y'] ?? [], range)
+  const realYield = realYieldBar(y10, coreYear)
+  return multiLineOption(data, range, [
+    { name: '核心CPI同比', metric: 'price:us:cpi_core', color: '#bc8cff' },
+    { name: 'CPI同比', metric: 'price:us:cpi', color: '#58a6ff' },
+    { name: '核心CPI年度', points: coreYear, color: '#3fb950', dashed: true },
+  ], {
+    zeroLine: true,
+    bars: [{ name: '10Y-核心CPI年度', points: realYield, color: 'rgba(139,148,158,0.45)' }],
+  })
 }

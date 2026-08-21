@@ -7,7 +7,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from .. import config, db, repo
@@ -119,9 +119,20 @@ def status() -> dict:
     return {"metrics": metrics, "last_updates": logs}
 
 
-# 托管前端构建产物（若存在）
+# 托管前端构建产物：静态资源按路径提供，其余回退 index.html（SPA 路由 /us 等）
 if WEB_DIST.is_dir():
-    app.mount("/", StaticFiles(directory=str(WEB_DIST), html=True), name="web")
+    app.mount("/assets", StaticFiles(directory=str(WEB_DIST / "assets")), name="assets")
+    app.mount("/data", StaticFiles(directory=str(WEB_DIST / "data")), name="data")
+
+
+@app.get("/{full_path:path}")
+def spa_fallback(full_path: str) -> FileResponse:
+    if full_path.startswith(("api/", "assets/", "data/")):
+        raise HTTPException(status_code=404)
+    index = WEB_DIST / "index.html"
+    if not index.exists():
+        raise HTTPException(status_code=404)
+    return FileResponse(index)
 
 
 def main() -> None:

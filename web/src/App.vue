@@ -1,9 +1,15 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { CHART_LAYOUT, METRIC_META, type RangeKey } from './lib/metrics'
 import { fetchMeta, fetchSeries, type MetricMeta, type Point } from './lib/api'
 import SeriesChart from './components/SeriesChart.vue'
 import MetricCard from './components/MetricCard.vue'
+
+const route = useRoute()
+// / 中国页；/us 美国页（图表按 id 前缀 us_ 区分）
+const isUs = computed(() => route.path.startsWith('/us'))
+const layout = computed(() => CHART_LAYOUT.filter((c) => isUs.value === c.id.startsWith('us_')))
 
 const data = reactive<Record<string, Point[]>>({})
 const metaList = ref<MetricMeta[]>([])
@@ -37,12 +43,13 @@ function onKeydown(e: KeyboardEvent) {
 onMounted(() => window.addEventListener('keydown', onKeydown))
 onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 
-onMounted(async () => {
+async function loadData() {
+  loading.value = true
   try {
     const [m] = await Promise.all([fetchMeta()])
     metaList.value = m
     const all = new Set<string>()
-    CHART_LAYOUT.forEach((c) => c.metrics.forEach((x) => all.add(x)))
+    layout.value.forEach((c) => c.metrics.forEach((x) => all.add(x)))
     await Promise.all(
       [...all].map(async (metric) => {
         data[metric] = await fetchSeries(metric)
@@ -51,10 +58,13 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
-})
+}
+
+onMounted(loadData)
+watch(() => route.path, loadData)
 
 const pills = computed(() =>
-  CHART_LAYOUT.map((c) => {
+  layout.value.flatMap((c) => {
     const metric = c.metrics[0]
     const pts = data[metric] ?? []
     const last = pts.length ? pts[pts.length - 1] : null
@@ -70,18 +80,81 @@ const pills = computed(() =>
     const corePrev = corePts.length > 1 ? corePts[corePts.length - 2] : null
     const ppiPts = data['price:cn:ppi'] ?? []
     const ppiLast = ppiPts.length ? ppiPts[ppiPts.length - 1] : null
-    return {
-      id: c.id,
-      row: ROW2.has(c.id) ? 2 : 1,
-      label: isPrice ? '核心CPI、PPI' : isM2 && last ? `${info.title}（${last.date.slice(2, 7).replace('-', '')}）` : info.title,
-      unit: isM2 ? '万亿' : info.unit,
-      decimals: isM2 ? 3 : (info.decimals ?? 2),
-      // % 量纲的比率型指标（中位数/收益率/分位/ERP）只显示差值，不显示相对变化率
-      deltaMode: info.unit === '%' ? 'point' : 'pct',
-      value: isM2 ? toW(last?.value) : isPrice ? (coreLast?.value ?? null) : (last?.value ?? null),
-      prev: isM2 ? toW(prev?.value) : isPrice ? (corePrev?.value ?? null) : (prev?.value ?? null),
-      sub: isPrice && ppiLast ? { label: 'PPI', value: ppiLast.value, decimals: 1, unit: '%' } : undefined,
+
+    const lastOf = (m: string) => {
+      const p = data[m] ?? []
+      return p.length ? p[p.length - 1] : null
     }
+    const prevOf = (m: string) => {
+      const p = data[m] ?? []
+      return p.length > 1 ? p[p.length - 2] : null
+    }
+    // 美国利率卡片拆两张：Fed/2Y 与 10Y/30Y
+    if (c.id === 'us_yield') {
+      const fed = lastOf('macro:us:fed_rate')
+      const fedPrev = prevOf('macro:us:fed_rate')
+      const b2 = lastOf('bond:us:2y')
+      const b2Prev = prevOf('bond:us:2y')
+      const b10 = lastOf('bond:us:10y')
+      const b10Prev = prevOf('bond:us:10y')
+      const b30 = lastOf('bond:us:30y')
+      const b30Prev = prevOf('bond:us:30y')
+      return [
+        {
+          id: 'us_yield_fed',
+          row: 2,
+          label: 'Fed、2Y美债',
+          unit: '%',
+          decimals: 2,
+          deltaMode: 'point',
+          value: fed?.value ?? null,
+          prev: fedPrev?.value ?? null,
+          sub: b2 ? { label: '2Y', value: b2.value, decimals: 4, unit: '%' } : undefined,
+        },
+        {
+          id: 'us_yield_10y',
+          row: 2,
+          label: '10Y、30Y美债',
+          unit: '%',
+          decimals: 4,
+          deltaMode: 'point',
+          value: b10?.value ?? null,
+          prev: b10Prev?.value ?? null,
+          sub: b30 ? { label: '30Y', value: b30.value, decimals: 4, unit: '%' } : undefined,
+        },
+      ]
+    }
+    // 美国物价卡片：主值核心 CPI（PPI 无源，暂缺）
+    if (c.id === 'us_price') {
+      const core = lastOf('price:us:cpi_core')
+      const corePrev = prevOf('price:us:cpi_core')
+      return [
+        {
+          id: 'us_price',
+          row: 2,
+          label: '核心CPI',
+          unit: '%',
+          decimals: 1,
+          deltaMode: 'point',
+          value: core?.value ?? null,
+          prev: corePrev?.value ?? null,
+        },
+      ]
+    }
+    return [
+      {
+        id: c.id,
+        row: ROW2.has(c.id) ? 2 : 1,
+        label: isPrice ? '核心CPI、PPI' : isM2 && last ? `${info.title}（${last.date.slice(2, 7).replace('-', '')}）` : info.title,
+        unit: isM2 ? '万亿' : info.unit,
+        decimals: isM2 ? 3 : (info.decimals ?? 2),
+        // % 量纲的比率型指标（中位数/收益率/分位/ERP）只显示差值，不显示相对变化率
+        deltaMode: info.unit === '%' ? 'point' : 'pct',
+        value: isM2 ? toW(last?.value) : isPrice ? (coreLast?.value ?? null) : (last?.value ?? null),
+        prev: isM2 ? toW(prev?.value) : isPrice ? (corePrev?.value ?? null) : (prev?.value ?? null),
+        sub: isPrice && ppiLast ? { label: 'PPI', value: ppiLast.value, decimals: 1, unit: '%' } : undefined,
+      },
+    ]
   }),
 )
 
@@ -92,8 +165,8 @@ const ranges: { key: RangeKey; label: string }[] = [
   { key: 'all', label: '全部' },
 ]
 
-// 卡片第二行固定为：两融 / M2 / 国债10Y / ERP / CPI-PPI
-const ROW2 = new Set(['margin', 'macro', 'yield', 'erp', 'price'])
+// 卡片第二行固定为：两融 / M2 / 国债10Y / ERP / CPI-PPI / 美国指标
+const ROW2 = new Set(['margin', 'macro', 'yield', 'erp', 'price', 'us_yield', 'us_price'])
 
 const updatedAt = computed(() => {
   const ts = metaList.value
@@ -107,7 +180,11 @@ const updatedAt = computed(() => {
 
 <template>
   <header class="top">
-    <h1>证券与宏观参考数据</h1>
+    <h1>{{ isUs ? '美国宏观参考数据' : '证券与宏观参考数据' }}</h1>
+    <nav class="region-nav">
+      <RouterLink to="/" :class="{ active: !isUs }">中国</RouterLink>
+      <RouterLink to="/us" :class="{ active: isUs }">美国</RouterLink>
+    </nav>
     <span style="flex: 1"></span>
     <div class="range-group">
       <button
@@ -157,7 +234,7 @@ const updatedAt = computed(() => {
     </div>
 
     <div class="grid" :class="{ single }">
-      <section v-for="c in CHART_LAYOUT" :key="c.id" class="card">
+      <section v-for="c in layout" :key="c.id" class="card">
         <div class="card-head">
           <span class="card-title">{{ c.title }}</span>
           <span class="card-sub">{{ METRIC_META[c.metrics[0]]?.description ?? '' }}</span>
@@ -168,7 +245,7 @@ const updatedAt = computed(() => {
   </template>
 
   <footer>
-    数据来自公开免费源（东财/上交所/深交所/中国债券信息网），仅供参考不构成投资建议 ·
+    数据来自公开免费源（东财/上交所/深交所/中国债券信息网/财经M平方/新浪），仅供参考不构成投资建议 ·
     最近更新 {{ updatedAt }} · 指标数 {{ metaList.length }}
   </footer>
 </template>
@@ -177,6 +254,31 @@ const updatedAt = computed(() => {
 .range-group {
   display: flex;
   gap: 4px;
+}
+
+.region-nav {
+  display: flex;
+  gap: 4px;
+  margin-left: 16px;
+}
+
+.region-nav a {
+  color: var(--text-dim);
+  text-decoration: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: 12px;
+}
+
+.region-nav a.active {
+  color: var(--text);
+  border-color: var(--blue);
+  background: rgba(88, 166, 255, 0.12);
+}
+
+.region-nav a:hover {
+  background: var(--bg-hover);
 }
 
 .range-btn {
