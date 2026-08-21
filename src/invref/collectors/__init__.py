@@ -1,7 +1,7 @@
 """各指标采集器。"""
-from . import bond_yield, index_daily, macro, margin, market_median, price, us, valuation
+from . import bond_yield, index_daily, macro, margin, market_median, misc, price, us, valuation
 
-__all__ = ["index_daily", "margin", "bond_yield", "market_median", "valuation", "macro", "price", "us"]
+__all__ = ["index_daily", "margin", "bond_yield", "market_median", "valuation", "macro", "price", "us", "misc"]
 
 # 每日更新入口按此顺序执行（valuation 依赖 bond_yield 的 10Y 入库）
 COLLECTORS = [
@@ -13,4 +13,5 @@ COLLECTORS = [
     ("货币供应量", macro.collect),
     ("物价指数", price.collect),
     ("美国宏观", us.collect),
+    ("其他类目", misc.collect),
 ]

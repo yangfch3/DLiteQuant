@@ -7,9 +7,15 @@ import SeriesChart from './components/SeriesChart.vue'
 import MetricCard from './components/MetricCard.vue'
 
 const route = useRoute()
-// / 中国页；/us 美国页（图表按 id 前缀 us_ 区分）
-const isUs = computed(() => route.path.startsWith('/us'))
-const layout = computed(() => CHART_LAYOUT.filter((c) => isUs.value === c.id.startsWith('us_')))
+// 页面路由：/ 中国、/us 美国、/misc 其他；图表按 id 前缀区分（us_ 美国、misc_ 其他）
+const region = computed(() => (route.path.startsWith('/us') ? 'us' : route.path.startsWith('/misc') ? 'misc' : 'cn'))
+const layout = computed(() =>
+  CHART_LAYOUT.filter((c) => {
+    if (region.value === 'us') return c.id.startsWith('us_')
+    if (region.value === 'misc') return c.id.startsWith('misc_')
+    return !c.id.startsWith('us_') && !c.id.startsWith('misc_')
+  }),
+)
 
 const data = reactive<Record<string, Point[]>>({})
 const metaList = ref<MetricMeta[]>([])
@@ -167,6 +173,28 @@ const pills = computed(() =>
         },
       ]
     }
+    // 黄金卡片：主值金价，sub 行银价
+    if (c.id === 'misc_gold') {
+      const gold = lastOf('misc:comex_gold')
+      const goldPrev = prevOf('misc:comex_gold')
+      const silver = lastOf('misc:comex_silver')
+      const silverPrev = prevOf('misc:comex_silver')
+      return [
+        {
+          id: 'misc_gold',
+          row: 1,
+          label: 'Comex 黄金',
+          unit: '美元/盎司',
+          decimals: 1,
+          deltaMode: 'pct',
+          value: gold?.value ?? null,
+          prev: goldPrev?.value ?? null,
+          sub: silver
+            ? { label: 'Comex 白银', value: silver.value, decimals: 2, unit: '美元/盎司', prev: silverPrev?.value ?? null }
+            : undefined,
+        },
+      ]
+    }
     return [
       {
         id: c.id,
@@ -206,10 +234,11 @@ const updatedAt = computed(() => {
 
 <template>
   <header class="top">
-    <h1>{{ isUs ? '美国宏观参考数据' : '证券与宏观参考数据' }}</h1>
+    <h1>{{ region === 'us' ? '美国宏观参考数据' : region === 'misc' ? '其他参考数据' : '证券与宏观参考数据' }}</h1>
     <nav class="region-nav">
-      <RouterLink to="/" :class="{ active: !isUs }">中国</RouterLink>
-      <RouterLink to="/us" :class="{ active: isUs }">美国</RouterLink>
+      <RouterLink to="/" :class="{ active: region === 'cn' }">中国</RouterLink>
+      <RouterLink to="/us" :class="{ active: region === 'us' }">美国</RouterLink>
+      <RouterLink to="/misc" :class="{ active: region === 'misc' }">其他</RouterLink>
     </nav>
     <span style="flex: 1"></span>
     <div class="range-group">

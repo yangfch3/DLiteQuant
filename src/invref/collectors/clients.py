@@ -238,6 +238,8 @@ def macromicro_usdcnh() -> list[tuple[str, float]]:
 
 YAHOO_DXY = "DX-Y.NYB"  # 美元指数（ICE）
 YAHOO_USDCNY = "CNY=X"  # 美元兑在岸人民币
+YAHOO_GOLD = "GC=F"  # Comex 黄金期货
+YAHOO_SILVER = "SI=F"  # Comex 白银期货
 
 
 def _yahoo_daily(symbol: str) -> list[tuple[str, float]]:
@@ -338,3 +340,13 @@ def nbs_core_cpi() -> list[tuple[str, float]]:
     if not merged:
         raise RuntimeError("nbs core cpi: empty")
     return sorted(merged.items())
+
+
+def yahoo_gold() -> list[tuple[str, float]]:
+    """Yahoo Finance-Comex 黄金期货日频（2016-08 起）。"""
+    return _yahoo_daily(YAHOO_GOLD)
+
+
+def yahoo_silver() -> list[tuple[str, float]]:
+    """Yahoo Finance-Comex 白银期货日频（2016-08 起）。"""
+    return _yahoo_daily(YAHOO_SILVER)

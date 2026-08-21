@@ -35,9 +35,11 @@ export const METRIC_META: Record<string, MetricInfo> = {
   'valuation:all_a:pe_pct': { title: '全A PE 分位', unit: '%', description: '全A等权PE 全历史滚动分位（0-100）', decimals: 1 },
   'valuation:all_a:pb_pct': { title: '全A PB 分位', unit: '%', description: '全A等权PB 全历史滚动分位（0-100）', decimals: 1 },
   'erp:csi800': { title: '股债性价比 ERP', unit: '%', description: '中证800(000906)加权EP(100/PE) − 10Y国债', decimals: 2 },
+  'misc:comex_gold': { title: 'Comex 黄金', unit: '美元/盎司', description: 'Comex 黄金期货收盘价（Yahoo Finance，2016-08 起）', decimals: 1 },
+  'misc:comex_silver': { title: 'Comex 白银', unit: '美元/盎司', description: 'Comex 白银期货收盘价（Yahoo Finance，2016-08 起）', decimals: 2 },
 }
 
-export type ChartKind = 'market' | 'median' | 'index' | 'margin' | 'yield' | 'erp' | 'valuation' | 'macro' | 'price' | 'us_yield' | 'us_price' | 'us_fx'
+export type ChartKind = 'market' | 'median' | 'index' | 'margin' | 'yield' | 'erp' | 'valuation' | 'macro' | 'price' | 'us_yield' | 'us_price' | 'us_fx' | 'misc_gold'
 
 export interface ChartConfig {
   id: string
@@ -60,6 +62,7 @@ export const CHART_LAYOUT: ChartConfig[] = [
   { id: 'yield', title: '国债收益率', kind: 'yield', metrics: ['bond:cn:10y', 'bond:cn:1y', 'bond:cn:30y'] },
   { id: 'erp', title: '股债性价比', kind: 'erp', metrics: ['erp:csi800'] },
   { id: 'valuation', title: '全A估值分位', kind: 'valuation', metrics: ['valuation:all_a:pe_pct', 'valuation:all_a:pb_pct'] },
+  { id: 'misc_gold', title: '黄金与贵金属', kind: 'misc_gold', metrics: ['misc:comex_gold', 'misc:comex_silver'] },
 ]
 
 export type RangeKey = '1y' | '3y' | '5y' | 'all'

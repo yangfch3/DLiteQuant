@@ -157,6 +157,18 @@ METRIC_META: dict[str, dict] = {
         "decimals": 2,
         "description": "中证800(000906)加权EP(100/PE) − 10Y国债；meta 含 ep/y10 分量",
     },
+    "misc:comex_gold": {
+        "title": "Comex 黄金",
+        "unit": "美元/盎司",
+        "decimals": 1,
+        "description": "Comex 黄金期货收盘价（Yahoo Finance，2016-08 起）",
+    },
+    "misc:comex_silver": {
+        "title": "Comex 白银",
+        "unit": "美元/盎司",
+        "decimals": 2,
+        "description": "Comex 白银期货收盘价（Yahoo Finance，2016-08 起）",
+    },
 }
 
 # 前端图表布局（方案 B 静态模式也依赖此顺序）
@@ -174,4 +186,5 @@ CHART_LAYOUT: list[dict] = [
     {"id": "yield", "title": "国债收益率", "kind": "yield", "metrics": ["bond:cn:10y", "bond:cn:1y", "bond:cn:30y"]},
     {"id": "erp", "title": "股债性价比", "kind": "erp", "metrics": ["erp:csi800"]},
     {"id": "valuation", "title": "全A估值分位", "kind": "valuation", "metrics": ["valuation:all_a:pe_pct", "valuation:all_a:pb_pct"]},
+    {"id": "misc_gold", "title": "黄金与贵金属", "kind": "misc_gold", "metrics": ["misc:comex_gold", "misc:comex_silver"]},
 ]
