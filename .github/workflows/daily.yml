@@ -40,13 +40,13 @@ jobs:
 
       - name: 构建前端
         working-directory: web
-        env:
-          # GitHub Pages 子路径部署：vite base 与 vue-router history base 均指向 /DLiteQuant/
-          VITE_BASE: /DLiteQuant/
+        # GitHub Pages 子路径部署：base 自动跟随仓库名（GITHUB_REPOSITORY=owner/repo），
+        # 仓库改名/迁移无需改动；自定义域名根路径部署时改 VITE_BASE: /
         run: |
           npm ci
-          npm run build
-          # GitHub Pages SPA 回退：未知路径（如 /DLiteQuant/us）返回 index.html
+          REPO="${GITHUB_REPOSITORY##*/}"
+          VITE_BASE="/${REPO}/" npm run build
+          # GitHub Pages SPA 回退：未知路径（如 /<repo>/us）返回 index.html
           cp dist/index.html dist/404.html
 
       - name: 部署到 GitHub Pages
