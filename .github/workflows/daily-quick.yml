@@ -1,0 +1,64 @@
+# 快速采集（跳过个股K线回填）：median_pct 与 stock_kline 复用上次部署的 JSON，
+# 只更新其余指标（指数/两融/国债/估值/货币/物价/美国）。手动触发。
+name: daily-quick
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      # median/stock_kline JSON 由 backfill 生成、不入库时从 gh-pages 复用
+      - name: 拉取上次部署的数据 JSON
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: gh-pages-data
+          fetch-depth: 1
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: '3.12'
+
+      - name: 安装 Python 依赖（按 uv.lock 固定版本）
+        run: uv sync --frozen
+
+      - name: 采集数据（跳过个股K线回填）并导出静态 JSON
+        run: |
+          uv run python -m invref.scripts.daily_update
+          uv run python -m invref.scripts.export_static
+
+      - name: 复用上次的 median JSON（不重新拉取个股K线）
+        run: |
+          if [ -f "gh-pages-data/data/all_a_median_pct.json" ]; then
+            cp "gh-pages-data/data/all_a_median_pct.json" "web/public/data/all_a_median_pct.json"
+            echo "已复用 all_a_median_pct.json"
+          else
+            echo "gh-pages 上无 all_a_median_pct.json，跳过"
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: 构建前端
+        working-directory: web
+        run: |
+          npm ci
+          REPO="${GITHUB_REPOSITORY##*/}"
+          VITE_BASE="/${REPO}/" npm run build
+          cp dist/index.html dist/404.html
+
+      - name: 部署到 GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: web/dist
+          force_orphan: true
