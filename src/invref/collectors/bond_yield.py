@@ -1,8 +1,8 @@
 """国债收益率采集：中债国债到期收益率 1Y / 10Y / 30Y。
 
 主源：AKShare bond_china_yield（中国债券信息网，全期限；本机可达时使用）；
-备源：东财数据中心 RPTA_WEB_TREASURYYIELD（中国国债 2Y/5Y/10Y/30Y）——
-     当前环境仅 10Y/30Y 有备源，1Y 在备源模式下暂缺（记录 TODO）。
+1Y 备源：新浪 bond_gb_zh_sina（中国1年期国债 CN1YT，2022-09 起）；
+10Y/30Y 备源：东财数据中心 RPTA_WEB_TREASURYYIELD（中国国债 2Y/5Y/10Y/30Y）。
 """
 from __future__ import annotations
 
@@ -18,6 +18,9 @@ log = logging.getLogger("invref.collector.bond")
 
 MATURITIES = ["1Y", "10Y", "30Y"]
 HIST_START = "20020101"
+
+# 新浪国债行情 symbol 映射（1Y 备源）
+SINA_SYMBOL_MAP = {"1Y": "中国1年期国债"}
 
 # 东财数据中心列的期限映射（仅 10Y/30Y 有）
 EM_COL_MAP = {"10Y": "中国国债收益率10年", "30Y": "中国国债收益率30年"}
@@ -38,6 +41,21 @@ def _from_chinabond(maturity: str) -> list[tuple[str, float, None]]:
     for _, r in df.iterrows():
         d = str(r[dcol])[:10]
         v = to_float(r[col])
+        if d and v is not None:
+            rows.append((d, v, None))
+    if not rows:
+        raise RuntimeError(f"{maturity} empty")
+    return rows
+
+
+def _from_sina(maturity: str) -> list[tuple[str, float, None]]:
+    import akshare as ak
+
+    df = retry(lambda: ak.bond_gb_zh_sina(symbol=SINA_SYMBOL_MAP[maturity]))
+    rows = []
+    for _, r in df.iterrows():
+        d = str(r["date"])[:10]
+        v = to_float(r["close"])
         if d and v is not None:
             rows.append((d, v, None))
     if not rows:
@@ -73,6 +91,16 @@ def _collect_one(conn: sqlite3.Connection, metric: str, maturity: str) -> None:
         except Exception as e:  # noqa: BLE001
             errors.append(f"{name}: {e}")
             log.warning("[%s] %s 源失败: %s", metric, name, e)
+
+    if maturity in SINA_SYMBOL_MAP:
+        try:
+            rows = _from_sina(maturity)
+            n = repo.upsert_series(conn, metric, rows, source="bond:sina")
+            repo.log_update(conn, metric, db.utcnow()[:10], n, "ok", "source=sina (备源)")
+            log.info("[%s] sina 备源写入 %d 行", metric, n)
+            return
+        except Exception as e:  # noqa: BLE001
+            errors.append(f"sina: {e}")
 
     if maturity in EM_COL_MAP:
         try:
