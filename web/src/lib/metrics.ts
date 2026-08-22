@@ -39,7 +39,7 @@ export const METRIC_META: Record<string, MetricInfo> = {
   'misc:comex_silver': { title: 'Comex 白银', unit: '美元/盎司', description: 'Comex 白银期货收盘价（Yahoo Finance，2016-08 起）', decimals: 2 },
 }
 
-export type ChartKind = 'market' | 'median' | 'index' | 'margin' | 'yield' | 'erp' | 'valuation' | 'macro' | 'price' | 'us_yield' | 'us_price' | 'us_fx' | 'misc_gold'
+export type ChartKind = 'market' | 'median' | 'index' | 'margin' | 'yield' | 'erp' | 'valuation' | 'macro' | 'price' | 'us_yield' | 'us_price' | 'us_fx' | 'misc_gold' | 'real_diff'
 
 export interface ChartConfig {
   id: string
@@ -63,6 +63,7 @@ export const CHART_LAYOUT: ChartConfig[] = [
   { id: 'erp', title: '股债性价比', kind: 'erp', metrics: ['erp:csi800'] },
   { id: 'valuation', title: '全A估值分位', kind: 'valuation', metrics: ['valuation:all_a:pe_pct', 'valuation:all_a:pb_pct'] },
   { id: 'misc_gold', title: '黄金与贵金属', kind: 'misc_gold', metrics: ['misc:comex_gold', 'misc:comex_silver', 'fx:us:dxy', 'macro:us:fed_rate', 'bond:us:10y'] },
+  { id: 'misc_real', title: '中美实际利差与汇率', kind: 'real_diff', metrics: ['bond:us:10y', 'price:us:cpi_core', 'price:us:cpi', 'bond:cn:10y', 'price:cn:cpi_core', 'price:cn:cpi', 'macro:us:fed_rate', 'fx:us:usdcny'] },
 ]
 
 export type RangeKey = '1y' | '3y' | '5y' | 'all'

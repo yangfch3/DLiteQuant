@@ -241,6 +241,8 @@ YAHOO_DXY = "DX-Y.NYB"  # 美元指数（ICE）
 YAHOO_USDCNY = "CNY=X"  # 美元兑在岸人民币
 YAHOO_GOLD = "GC=F"  # Comex 黄金期货
 YAHOO_SILVER = "SI=F"  # Comex 白银期货
+YAHOO_US10Y = "^TNX"  # 美国10年期国债收益率
+YAHOO_US30Y = "^TYX"  # 美国30年期国债收益率
 
 
 def _yahoo_daily(symbol: str) -> list[tuple[str, float]]:
@@ -436,3 +438,13 @@ def yahoo_gold() -> list[tuple[str, float]]:
 def yahoo_silver() -> list[tuple[str, float]]:
     """Yahoo Finance-Comex 白银期货日频（2016-08 起）。"""
     return _yahoo_daily(YAHOO_SILVER)
+
+
+def yahoo_us10y() -> list[tuple[str, float]]:
+    """Yahoo Finance-美国10年期国债收益率日频（2016-08 起，覆盖新浪源缺失的更早历史）。"""
+    return _yahoo_daily(YAHOO_US10Y)
+
+
+def yahoo_us30y() -> list[tuple[str, float]]:
+    """Yahoo Finance-美国30年期国债收益率日频（2016-08 起）。"""
+    return _yahoo_daily(YAHOO_US30Y)

@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { CHART_LAYOUT, METRIC_META, type RangeKey } from './lib/metrics'
+import { CHART_LAYOUT, METRIC_META, type ChartConfig, type RangeKey } from './lib/metrics'
 import { fetchMeta, fetchSeries, type MetricMeta, type Point } from './lib/api'
+import { realDiffPoints } from './lib/chartBuilders'
 import SeriesChart from './components/SeriesChart.vue'
 import MetricCard from './components/MetricCard.vue'
 
@@ -30,6 +31,12 @@ function toggleView() {
 }
 
 const metaMap = computed(() => new Map(metaList.value.map((m) => [m.metric, m])))
+
+// 图表卡片右上角副标题：利差图为极简计算说明，其余取首指标描述
+function chartSub(c: ChartConfig): string {
+  if (c.id === 'misc_real') return '（美10Y−美核心CPI）−（中10Y−中核心CPI）'
+  return METRIC_META[c.metrics[0]]?.description ?? ''
+}
 
 // 键盘快捷键：1=1年 2=3年 3=5年 4=全部
 const RANGE_KEYS: Record<string, RangeKey> = { '1': '1y', '2': '3y', '3': '5y', '4': 'all' }
@@ -195,6 +202,29 @@ const pills = computed(() =>
         },
       ]
     }
+    // 中美实际利差卡片：主值利差（%），sub 行 USD/CNY
+    if (c.id === 'misc_real') {
+      const diffPts = realDiffPoints(data)
+      const diffLast = diffPts.length ? diffPts[diffPts.length - 1] : null
+      const diffPrev = diffPts.length > 1 ? diffPts[diffPts.length - 2] : null
+      const cny = lastOf('fx:us:usdcny')
+      const cnyPrev = prevOf('fx:us:usdcny')
+      return [
+        {
+          id: 'misc_real',
+          row: 2,
+          label: '中美实际利差',
+          unit: '%',
+          decimals: 2,
+          deltaMode: 'point',
+          value: diffLast?.value ?? null,
+          prev: diffPrev?.value ?? null,
+          sub: cny
+            ? { label: 'USD/CNY', value: cny.value, decimals: 4, unit: '', prev: cnyPrev?.value ?? null }
+            : undefined,
+        },
+      ]
+    }
     return [
       {
         id: c.id,
@@ -292,7 +322,7 @@ const updatedAt = computed(() => {
       <section v-for="c in layout" :key="c.id" class="card">
         <div class="card-head">
           <span class="card-title">{{ c.title }}</span>
-          <span class="card-sub">{{ METRIC_META[c.metrics[0]]?.description ?? '' }}</span>
+          <span class="card-sub">{{ chartSub(c) }}</span>
         </div>
         <SeriesChart :chart="c" :data="data" :range="range" />
       </section>

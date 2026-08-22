@@ -98,6 +98,8 @@ export function buildOption(
       return usFxOption(chart, data, range)
     case 'misc_gold':
       return miscGoldOption(chart, data, range)
+    case 'real_diff':
+      return realDiffOption(chart, data, range)
     case 'yield':
       return yieldOption(chart, data, range)
     case 'erp':
@@ -784,6 +786,168 @@ function miscGoldOption(chart: ChartConfig, data: Record<string, Point[]>, range
       { name: '10Y美债', type: 'line', yAxisIndex: 3, data: cY10, ...LINE_SMALL, lineStyle: { ...LINE_SMALL.lineStyle, color: '#d1342f' }, itemStyle: { color: '#d1342f' } },
       { name: 'Fed', type: 'line', yAxisIndex: 3, data: fedCol, ...LINE_SMALL, lineStyle: { ...LINE_SMALL.lineStyle, color: '#2e9e5b', type: 'dashed' }, itemStyle: { color: '#2e9e5b' } },
       { name: '金银比', type: 'bar', yAxisIndex: 1, data: ratio, barWidth: '20%', itemStyle: { color: 'rgba(139,92,246,0.4)' } },
+    ],
+  }
+}
+
+// 核心 CPI 当年已发布月份同比的算术平均（年度口径，与 CPI 图一致）
+function yearAvg(pts: Point[]): Point[] {
+  const byYear = new Map<string, { sum: number; n: number }>()
+  for (const p of pts) {
+    const y = p.date.slice(0, 4)
+    const e = byYear.get(y) ?? { sum: 0, n: 0 }
+    e.sum += p.value
+    e.n += 1
+    byYear.set(y, e)
+  }
+  return pts.map((p) => ({ ...p, value: byYear.get(p.date.slice(0, 4))!.sum / byYear.get(p.date.slice(0, 4))!.n }))
+}
+
+// 通胀月度序列：核心 CPI 有值用核心，缺失月份回退 CPI（按国家独立；中核心 2021-01 起，之前用 CPI）
+function cpiMerged(core: Point[], cpi: Point[]): Point[] {
+  const coreMap = new Map(core.map((p) => [p.date, p.value]))
+  const cpiMap = new Map(cpi.map((p) => [p.date, p.value]))
+  const dates = [...new Set([...coreMap.keys(), ...cpiMap.keys()])].sort()
+  return dates
+    .filter((d) => coreMap.has(d) || cpiMap.has(d))
+    .map((d) => ({ date: d, value: (coreMap.get(d) ?? cpiMap.get(d))! }))
+}
+
+// 中美实际利差 = (美10Y − 美实际利率通胀) − (中10Y − 中实际利率通胀)，通胀取核心CPI年度均值、缺失回退CPI年度均值。
+// 每个通胀月度点（每月01日）取当月首个交易日的 10Y 收益率计算，日期与 CPI 点对齐；
+// 若该 CPI 点 45 天内无对应 10Y 数据（如美10Y 2016-08 起才有），跳过不生成（避免用陈旧收益率）。
+export function realDiffPoints(data: Record<string, Point[]>): Point[] {
+  const uCore = yearAvg(cpiMerged(data['price:us:cpi_core'] ?? [], data['price:us:cpi'] ?? []))
+  const cCore = yearAvg(cpiMerged(data['price:cn:cpi_core'] ?? [], data['price:cn:cpi'] ?? []))
+  const u10 = [...(data['bond:us:10y'] ?? [])].sort((a, b) => (a.date < b.date ? -1 : 1))
+  const c10 = [...(data['bond:cn:10y'] ?? [])].sort((a, b) => (a.date < b.date ? -1 : 1))
+  const uCoreMap = new Map(uCore.map((p) => [p.date, p.value]))
+  const cCoreMap = new Map(cCore.map((p) => [p.date, p.value]))
+  const dates = [...new Set([...uCore, ...cCore].map((p) => p.date))].sort()
+  const out: Point[] = []
+  let ui = 0
+  let ci = 0
+  let uCoreVal: number | null = null
+  let cCoreVal: number | null = null
+  for (const d of dates) {
+    if (uCoreMap.has(d)) uCoreVal = uCoreMap.get(d)!
+    if (cCoreMap.has(d)) cCoreVal = cCoreMap.get(d)!
+    while (ui < u10.length && u10[ui].date < d) ui++
+    while (ci < c10.length && c10[ci].date < d) ci++
+    const day = 86400000
+    const staleU = ui >= u10.length || Date.parse(u10[ui].date) - Date.parse(d) > 45 * day
+    const staleC = ci >= c10.length || Date.parse(c10[ci].date) - Date.parse(d) > 45 * day
+    if (staleU || staleC || uCoreVal == null || cCoreVal == null) continue
+    const usReal = u10[ui].value - uCoreVal
+    const cnReal = c10[ci].value - cCoreVal
+    out.push({ date: d, value: +(usReal - cnReal).toFixed(2) })
+  }
+  return out
+}
+
+function realDiffOption(chart: ChartConfig, data: Record<string, Point[]>, range: RangeKey): EChartsOption {
+  const diff = filterPoints(realDiffPoints(data), range)
+  const cny = filterPoints(data['fx:us:usdcny'] ?? [], range)
+  const fed = filterPoints(data['macro:us:fed_rate'] ?? [], range)
+  const toData = (pts: Point[]) => pts.map((p) => [Date.parse(p.date), p.value] as const)
+  // FED 月频 → 日频前向填充（与其它美债图一致），使 tooltip 每天可见
+  const fedDates = [...new Set([...diff, ...cny, ...fed].map((p) => p.date))].sort()
+  const fedMap = new Map(fed.map((p) => [p.date, p.value]))
+  let fedLast: number | null = null
+  const fedData: [number, number | null][] = []
+  for (const d of fedDates) {
+    if (fedMap.has(d)) fedLast = fedMap.get(d)!
+    fedData.push([Date.parse(d), fedLast])
+  }
+  // time 轴下自定义 formatter 收到的 p.value 是原始数据项数组 [timestamp, y]，取 y 分量
+  const tooltipVal = (v: unknown): number | null => {
+    const x = Array.isArray(v) ? v[1] : v
+    return x == null || typeof x !== 'number' || !Number.isFinite(x) ? null : x
+  }
+  const tooltip = {
+    ...TOOLTIP,
+    formatter: (ps: any[]) => {
+      if (!ps.length) return ''
+      const d = new Date(ps[0].axisValue as number)
+      const pad = (n: number) => String(n).padStart(2, '0')
+      const title = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+      const body = ps
+        .map((p: any) => {
+          const v = tooltipVal(p.value)
+          if (v == null) return ''
+          return p.seriesName === 'USD/CNY'
+            ? `${p.marker}${p.seriesName}：${v.toFixed(4)}`
+            : `${p.marker}${p.seriesName}：${v.toFixed(2)}%`
+        })
+        .filter(Boolean)
+        .join('<br/>')
+      return `<div style="font-weight:600;margin-bottom:4px">${title}</div>${body}`
+    },
+  }
+  return {
+    animation: false,
+    tooltip,
+    legend: { ...LEGEND, data: ['实际利差', 'USD/CNY', 'FED'] },
+    grid: { left: 56, right: 128, top: 40, bottom: 56 },
+    xAxis: {
+      type: 'time',
+      axisLabel: {
+        ...AXIS_LABEL,
+        hideOverlap: true,
+        formatter: (v: number) => {
+          const d = new Date(v)
+          const pad = (n: number) => String(n).padStart(2, '0')
+          return d.getMonth() === 0 && d.getDate() <= 7 ? String(d.getFullYear()) : `${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+        },
+      },
+      axisLine: { lineStyle: { color: '#e4e0d8' } },
+    },
+    // 三轴按量级分组：实际利差(左) / USD/CNY(右1) / FED(右2)
+    yAxis: [
+      { type: 'value', scale: true, splitLine: SPLIT, axisLabel: { ...AXIS_LABEL, formatter: (v: number) => `${v.toFixed(1)}%` } },
+      { type: 'value', scale: true, splitLine: { show: false }, axisLabel: AXIS_LABEL, position: 'right', offset: 0 },
+      {
+        type: 'value', scale: true, splitLine: { show: false },
+        axisLabel: { ...AXIS_LABEL, formatter: (v: number) => `${v.toFixed(1)}%` },
+        position: 'right', offset: 42,
+      },
+    ],
+    dataZoom: [ZOOM_INSIDE, ZOOM_SLIDER],
+    series: [
+      {
+        name: '实际利差',
+        type: 'line',
+        yAxisIndex: 0,
+        data: toData(diff),
+        ...LINE_SMALL,
+        lineStyle: { ...LINE_SMALL.lineStyle, color: '#4d6bfe', width: 2 },
+        itemStyle: { color: '#4d6bfe' },
+        markLine: {
+          symbol: 'none',
+          silent: true,
+          label: { show: false },
+          lineStyle: { color: '#e4e0d8' },
+          data: [{ yAxis: 0 }],
+        },
+      },
+      {
+        name: 'USD/CNY',
+        type: 'line',
+        yAxisIndex: 1,
+        data: toData(cny),
+        ...LINE_SMALL,
+        lineStyle: { ...LINE_SMALL.lineStyle, color: '#c98a1d' },
+        itemStyle: { color: '#c98a1d' },
+      },
+      {
+        name: 'FED',
+        type: 'line',
+        yAxisIndex: 2,
+        data: fedData,
+        ...LINE_SMALL,
+        lineStyle: { ...LINE_SMALL.lineStyle, color: '#2e9e5b', type: 'dashed' },
+        itemStyle: { color: '#2e9e5b' },
+      },
     ],
   }
 }

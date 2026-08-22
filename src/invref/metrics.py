@@ -187,4 +187,5 @@ CHART_LAYOUT: list[dict] = [
     {"id": "erp", "title": "股债性价比", "kind": "erp", "metrics": ["erp:csi800"]},
     {"id": "valuation", "title": "全A估值分位", "kind": "valuation", "metrics": ["valuation:all_a:pe_pct", "valuation:all_a:pb_pct"]},
     {"id": "misc_gold", "title": "黄金与贵金属", "kind": "misc_gold", "metrics": ["misc:comex_gold", "misc:comex_silver", "fx:us:dxy", "macro:us:fed_rate", "bond:us:10y"]},
+    {"id": "misc_real", "title": "中美实际利差与汇率", "kind": "real_diff", "metrics": ["bond:us:10y", "price:us:cpi_core", "price:us:cpi", "bond:cn:10y", "price:cn:cpi_core", "price:cn:cpi", "macro:us:fed_rate", "fx:us:usdcny"]},
 ]

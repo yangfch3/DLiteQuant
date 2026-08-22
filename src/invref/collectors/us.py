@@ -1,7 +1,8 @@
 """美国宏观数据采集：Fed 利率、美债收益率、CPI 系列。
 
 源：Fed/CPI 来自东财数据中心 RPT_ECONOMICVALUE_USA（本机可达）；
-美债收益率来自新浪 bond_gb_us_sina（2022-10 起，同中国国债备源链路）；
+美债 10Y/30Y 来自 Yahoo Finance（^TNX/^TYX，2016-08 起，可回填新浪缺失的更早历史），
+失败回退新浪 bond_gb_us_sina（2022-10 起）；2Y 仍走新浪（Yahoo 无 2Y 收益率指数，FRED 当前环境不可达）；
 美元兑人民币支持 Yahoo 失败后的国内备源，美元指数暂无完整历史备源。
 美国 PPI（同比）各源（FRED/东财/金十/英为财情）当前环境均不可得，暂不采集。
 """
@@ -23,7 +24,7 @@ EM_INDICATORS = [
     ("price:us:cpi", "EMG00000733", "美国:CPI:非季调:当月同比"),
 ]
 
-# (metric, 新浪 symbol)
+# (metric, 新浪 symbol)；10Y 改由 Yahoo 主源提供，见 collect()
 SINA_BONDS = [
     ("bond:us:2y", "美国2年期国债"),
     ("bond:us:10y", "美国10年期国债"),
@@ -110,6 +111,27 @@ def collect(conn: sqlite3.Connection) -> None:
     for metric, iid, _ in EM_INDICATORS:
         _collect_one(conn, metric, "us:em_dc", lambda iid=iid: _from_em(iid))
     for metric, symbol in SINA_BONDS:
-        _collect_one(conn, metric, "us:sina", lambda symbol=symbol: _from_sina(symbol))
+        if metric == "bond:us:10y":
+            _collect_with_source(conn, metric, _us10y_daily)
+        elif metric == "bond:us:30y":
+            _collect_with_source(conn, metric, _us30y_daily)
+        else:
+            _collect_one(conn, metric, "us:sina", lambda symbol=symbol: _from_sina(symbol))
     for metric, fn in FX:
         _collect_with_source(conn, metric, fn)
+
+
+def _us10y_daily() -> tuple[list[tuple[str, float]], str]:
+    """美债 10Y：Yahoo ^TNX 主源（2016-08 起），失败回退新浪（2022-10 起）。"""
+    return clients._first_success([
+        ("us:yahoo_tnx", clients.yahoo_us10y),
+        ("us:sina", lambda: _from_sina("美国10年期国债")),
+    ])
+
+
+def _us30y_daily() -> tuple[list[tuple[str, float]], str]:
+    """美债 30Y：Yahoo ^TYX 主源（2016-08 起），失败回退新浪（2022-10 起）。"""
+    return clients._first_success([
+        ("us:yahoo_tyx", clients.yahoo_us30y),
+        ("us:sina", lambda: _from_sina("美国30年期国债")),
+    ])
