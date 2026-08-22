@@ -1,0 +1,282 @@
+[
+ {
+  "metric": "all_a:turnover",
+  "title": "全A成交额",
+  "unit": "亿元",
+  "description": "中证全指(000985)成分合计成交额，代表全市场成交额",
+  "n": 5255,
+  "first_date": "2005-01-04",
+  "last_date": "2026-08-21",
+  "updated_at": "2026-08-22T00:54:39+00:00"
+ },
+ {
+  "metric": "bond:cn:10y",
+  "title": "国债收益率 10Y",
+  "unit": "%",
+  "description": "中债国债到期收益率（10年）",
+  "n": 4659,
+  "first_date": "2008-01-02",
+  "last_date": "2026-08-21",
+  "updated_at": "2026-08-22T00:54:59+00:00"
+ },
+ {
+  "metric": "bond:cn:1y",
+  "title": "国债收益率 1Y",
+  "unit": "%",
+  "description": "中债国债到期收益率（1年）",
+  "n": 1000,
+  "first_date": "2022-09-06",
+  "last_date": "2026-08-21",
+  "updated_at": "2026-08-22T00:54:51+00:00"
+ },
+ {
+  "metric": "bond:cn:30y",
+  "title": "国债收益率 30Y",
+  "unit": "%",
+  "description": "中债国债到期收益率（30年）",
+  "n": 4659,
+  "first_date": "2008-01-02",
+  "last_date": "2026-08-21",
+  "updated_at": "2026-08-22T00:55:07+00:00"
+ },
+ {
+  "metric": "bond:us:10y",
+  "title": "美债收益率 10Y",
+  "unit": "%",
+  "description": "美国国债收益率（10年）",
+  "n": 2513,
+  "first_date": "2016-08-22",
+  "last_date": "2026-08-21",
+  "updated_at": "2026-08-22T00:55:29+00:00"
+ },
+ {
+  "metric": "bond:us:2y",
+  "title": "美债收益率 2Y",
+  "unit": "%",
+  "description": "美国国债收益率（2年）",
+  "n": 1000,
+  "first_date": "2022-10-11",
+  "last_date": "2026-08-20",
+  "updated_at": "2026-08-22T00:55:29+00:00"
+ },
+ {
+  "metric": "bond:us:30y",
+  "title": "美债收益率 30Y",
+  "unit": "%",
+  "description": "美国国债收益率（30年）",
+  "n": 2513,
+  "first_date": "2016-08-22",
+  "last_date": "2026-08-21",
+  "updated_at": "2026-08-22T00:55:29+00:00"
+ },
+ {
+  "metric": "erp:csi800",
+  "title": "股债性价比 ERP",
+  "unit": "%",
+  "description": "中证800(000906)加权EP(100/PE) − 10Y国债；meta 含 ep/y10 分量",
+  "n": 4530,
+  "first_date": "2008-01-02",
+  "last_date": "2026-08-21",
+  "updated_at": "2026-08-22T00:55:17+00:00"
+ },
+ {
+  "metric": "fx:us:dxy",
+  "title": "美元指数",
+  "unit": "",
+  "description": "美元指数 DXY（Yahoo Finance，2016-08 起）",
+  "n": 2514,
+  "first_date": "2016-08-22",
+  "last_date": "2026-08-21",
+  "updated_at": "2026-08-22T00:55:29+00:00"
+ },
+ {
+  "metric": "fx:us:usdcny",
+  "title": "美元兑人民币(在岸)",
+  "unit": "",
+  "description": "美元/在岸人民币 USD/CNY（Yahoo Finance；失败时新浪央行中间价）",
+  "n": 2602,
+  "first_date": "2016-08-21",
+  "last_date": "2026-08-21",
+  "updated_at": "2026-08-22T00:55:30+00:00"
+ },
+ {
+  "metric": "index:000985:close",
+  "title": "中证全指(000985)",
+  "unit": "点",
+  "description": "全A走势（中证全指(000985)收盘），meta.amount 为全市场成交额（亿元）",
+  "n": 5255,
+  "first_date": "2005-01-04",
+  "last_date": "2026-08-21",
+  "updated_at": "2026-08-22T00:54:39+00:00"
+ },
+ {
+  "metric": "index:159259:close",
+  "title": "成长100 (ETF 159259)",
+  "unit": "元",
+  "description": "易方达成长ETF 前复权收盘价",
+  "n": 238,
+  "first_date": "2025-08-28",
+  "last_date": "2026-08-21",
+  "updated_at": "2026-08-22T00:54:44+00:00"
+ },
+ {
+  "metric": "index:H30269:close",
+  "title": "红利低波(H30269)",
+  "unit": "点",
+  "description": "中证红利低波动指数（H30269）收盘",
+  "n": 4548,
+  "first_date": "2006-01-04",
+  "last_date": "2026-08-21",
+  "updated_at": "2026-08-22T00:54:43+00:00"
+ },
+ {
+  "metric": "macro:cn:m1",
+  "title": "M1 货币供应量",
+  "unit": "亿元",
+  "description": "M1 月度余额及年增率（东财数据中心）",
+  "n": 223,
+  "first_date": "2008-01-01",
+  "last_date": "2026-07-01",
+  "updated_at": "2026-08-22T00:55:18+00:00"
+ },
+ {
+  "metric": "macro:cn:m2",
+  "title": "M2 货币供应量",
+  "unit": "亿元",
+  "description": "M2 月度余额及 M1/M2 年增率（东财数据中心）",
+  "n": 223,
+  "first_date": "2008-01-01",
+  "last_date": "2026-07-01",
+  "updated_at": "2026-08-22T00:55:18+00:00"
+ },
+ {
+  "metric": "macro:us:fed_rate",
+  "title": "美联储基准利率",
+  "unit": "%",
+  "description": "美国联邦基金利率目标区间上限（东财数据中心，2008-01 起）",
+  "n": 149,
+  "first_date": "2008-01-01",
+  "last_date": "2026-07-01",
+  "updated_at": "2026-08-22T00:55:25+00:00"
+ },
+ {
+  "metric": "margin:balance",
+  "title": "两融余额",
+  "unit": "亿元",
+  "description": "沪深两融余额",
+  "n": 3981,
+  "first_date": "2010-03-31",
+  "last_date": "2026-08-20",
+  "updated_at": "2026-08-22T00:54:47+00:00"
+ },
+ {
+  "metric": "misc:comex_gold",
+  "title": "Comex 黄金",
+  "unit": "美元/盎司",
+  "description": "Comex 黄金期货收盘价（Yahoo Finance；失败时新浪 GC）",
+  "n": 2513,
+  "first_date": "2016-08-22",
+  "last_date": "2026-08-21",
+  "updated_at": "2026-08-22T00:55:30+00:00"
+ },
+ {
+  "metric": "misc:comex_silver",
+  "title": "Comex 白银",
+  "unit": "美元/盎司",
+  "description": "Comex 白银期货收盘价（Yahoo Finance；失败时新浪 SI）",
+  "n": 2513,
+  "first_date": "2016-08-22",
+  "last_date": "2026-08-21",
+  "updated_at": "2026-08-22T00:55:30+00:00"
+ },
+ {
+  "metric": "price:cn:cpi",
+  "title": "CPI 同比",
+  "unit": "%",
+  "description": "CPI 月度同比与 CPI 年度均值（东财数据中心）",
+  "n": 223,
+  "first_date": "2008-01-01",
+  "last_date": "2026-07-01",
+  "updated_at": "2026-08-22T00:55:20+00:00"
+ },
+ {
+  "metric": "price:cn:cpi_core",
+  "title": "核心 CPI 同比",
+  "unit": "%",
+  "description": "核心 CPI（扣除食品和能源）月度同比（财经M平方，2006-01 起）",
+  "n": 67,
+  "first_date": "2021-01-01",
+  "last_date": "2026-07-01",
+  "updated_at": "2026-08-22T00:55:25+00:00"
+ },
+ {
+  "metric": "price:cn:ppi",
+  "title": "PPI 同比",
+  "unit": "%",
+  "description": "PPI 月度同比（东财数据中心，2006-01 起）",
+  "n": 247,
+  "first_date": "2006-01-01",
+  "last_date": "2026-07-01",
+  "updated_at": "2026-08-22T00:55:21+00:00"
+ },
+ {
+  "metric": "price:us:cpi",
+  "title": "美国 CPI 同比",
+  "unit": "%",
+  "description": "美国 CPI（非季调）当月同比（东财数据中心，2008-01 起）",
+  "n": 222,
+  "first_date": "2008-01-01",
+  "last_date": "2026-07-01",
+  "updated_at": "2026-08-22T00:55:27+00:00"
+ },
+ {
+  "metric": "price:us:cpi_core",
+  "title": "美国核心 CPI 同比",
+  "unit": "%",
+  "description": "美国核心 CPI（季调）当月同比（东财数据中心，2008-01 起）",
+  "n": 222,
+  "first_date": "2008-01-01",
+  "last_date": "2026-07-01",
+  "updated_at": "2026-08-22T00:55:26+00:00"
+ },
+ {
+  "metric": "valuation:all_a:pb",
+  "title": "全A等权PB",
+  "unit": "倍",
+  "description": "全A等权市净率（乐咕乐股）",
+  "n": 5248,
+  "first_date": "2005-01-04",
+  "last_date": "2026-08-21",
+  "updated_at": "2026-08-22T00:55:13+00:00"
+ },
+ {
+  "metric": "valuation:all_a:pb_pct",
+  "title": "全A PB 分位",
+  "unit": "%",
+  "description": "全A等权PB 全历史滚动分位（0-100，截至当日含当日）",
+  "n": 5248,
+  "first_date": "2005-01-04",
+  "last_date": "2026-08-21",
+  "updated_at": "2026-08-22T00:55:14+00:00"
+ },
+ {
+  "metric": "valuation:all_a:pe",
+  "title": "全A等权PE",
+  "unit": "倍",
+  "description": "全A等权滚动市盈率（乐咕乐股，TTM）",
+  "n": 5246,
+  "first_date": "2005-01-05",
+  "last_date": "2026-08-21",
+  "updated_at": "2026-08-22T00:55:13+00:00"
+ },
+ {
+  "metric": "valuation:all_a:pe_pct",
+  "title": "全A PE 分位",
+  "unit": "%",
+  "description": "全A等权PE 全历史滚动分位（0-100，截至当日含当日）",
+  "n": 5246,
+  "first_date": "2005-01-05",
+  "last_date": "2026-08-21",
+  "updated_at": "2026-08-22T00:55:13+00:00"
+ }
+]
